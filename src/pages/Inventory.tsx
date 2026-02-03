@@ -31,13 +31,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { useProducts, useAddProduct, useUpdateStock, useDeleteProduct, Product, ItemType } from "@/hooks/useProducts";
+import { useProducts, useAddProduct, useUpdateStock, useUpdateProduct, useDeleteProduct, Product, ItemType } from "@/hooks/useProducts";
 import { formatCurrency } from "@/lib/format";
 import { 
   Package, 
   Plus, 
   Search, 
   Edit, 
+  Pencil,
   Trash2,
   AlertTriangle,
   ArrowUpCircle,
@@ -257,6 +258,146 @@ function StockUpdateModal({
   );
 }
 
+function EditItemModal({ 
+  product, 
+  onClose 
+}: { 
+  product: Product | null; 
+  onClose: () => void;
+}) {
+  const updateProduct = useUpdateProduct();
+  const [form, setForm] = useState({
+    name: "",
+    selling_price: "",
+    cost_price: "",
+    category: "",
+  });
+  
+  // Update form when product changes
+  useState(() => {
+    if (product) {
+      setForm({
+        name: product.name,
+        selling_price: product.selling_price.toString(),
+        cost_price: product.cost_price.toString(),
+        category: product.category || "",
+      });
+    }
+  });
+  
+  // Reset form when product changes
+  if (product && form.name !== product.name && form.selling_price !== product.selling_price.toString()) {
+    setForm({
+      name: product.name,
+      selling_price: product.selling_price.toString(),
+      cost_price: product.cost_price.toString(),
+      category: product.category || "",
+    });
+  }
+  
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!product) return;
+    
+    await updateProduct.mutateAsync({
+      id: product.id,
+      name: form.name,
+      selling_price: parseFloat(form.selling_price) || 0,
+      cost_price: parseFloat(form.cost_price) || 0,
+      category: form.category || null,
+    });
+    
+    onClose();
+  };
+  
+  if (!product) return null;
+  
+  const isService = product.item_type === "service";
+  
+  return (
+    <Dialog open={!!product} onOpenChange={onClose}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Edit {isService ? "Service" : "Product"}</DialogTitle>
+        </DialogHeader>
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div className="space-y-2">
+            <Label htmlFor="edit-name">{isService ? "Service Name" : "Product Name"}</Label>
+            <Input
+              id="edit-name"
+              value={form.name}
+              onChange={(e) => setForm({ ...form, name: e.target.value })}
+            />
+          </div>
+          
+          <div className="grid gap-4 sm:grid-cols-2">
+            {!isService && (
+              <div className="space-y-2">
+                <Label htmlFor="edit-cost">Cost Price</Label>
+                <Input
+                  id="edit-cost"
+                  type="number"
+                  step="0.01"
+                  value={form.cost_price}
+                  onChange={(e) => setForm({ ...form, cost_price: e.target.value })}
+                />
+              </div>
+            )}
+            <div className={`space-y-2 ${isService ? 'col-span-2' : ''}`}>
+              <Label htmlFor="edit-selling">{isService ? "Service Charge" : "Selling Price"}</Label>
+              <Input
+                id="edit-selling"
+                type="number"
+                step="0.01"
+                value={form.selling_price}
+                onChange={(e) => setForm({ ...form, selling_price: e.target.value })}
+              />
+            </div>
+          </div>
+          
+          <div className="space-y-2">
+            <Label htmlFor="edit-category">Category</Label>
+            <Select value={form.category} onValueChange={(v) => setForm({ ...form, category: v })}>
+              <SelectTrigger>
+                <SelectValue placeholder="Select category" />
+              </SelectTrigger>
+              <SelectContent>
+                {isService ? (
+                  <>
+                    <SelectItem value="Xerox">Xerox</SelectItem>
+                    <SelectItem value="Print">Print</SelectItem>
+                    <SelectItem value="Lamination">Lamination</SelectItem>
+                    <SelectItem value="Binding">Binding</SelectItem>
+                    <SelectItem value="Photo">Photo</SelectItem>
+                    <SelectItem value="CSC Services">CSC Services</SelectItem>
+                    <SelectItem value="Other Services">Other Services</SelectItem>
+                  </>
+                ) : (
+                  <>
+                    <SelectItem value="Stationery">Stationery</SelectItem>
+                    <SelectItem value="Paper">Paper</SelectItem>
+                    <SelectItem value="Office Supplies">Office Supplies</SelectItem>
+                    <SelectItem value="Other">Other</SelectItem>
+                  </>
+                )}
+              </SelectContent>
+            </Select>
+          </div>
+          
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={onClose}>
+              Cancel
+            </Button>
+            <Button type="submit" disabled={updateProduct.isPending}>
+              {updateProduct.isPending ? "Saving..." : "Save Changes"}
+            </Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 function ItemsTable({ 
   itemType, 
   search 
@@ -267,6 +408,7 @@ function ItemsTable({
   const { data: items, isLoading } = useProducts(itemType);
   const deleteProduct = useDeleteProduct();
   const [stockUpdateProduct, setStockUpdateProduct] = useState<Product | null>(null);
+  const [editProduct, setEditProduct] = useState<Product | null>(null);
   
   const filteredItems = items?.filter(item => 
     item.name.toLowerCase().includes(search.toLowerCase()) ||
@@ -352,10 +494,19 @@ function ItemsTable({
                         variant="ghost"
                         size="sm"
                         onClick={() => setStockUpdateProduct(item)}
+                        title="Update stock"
                       >
-                        <Edit className="h-4 w-4" />
+                        <ArrowUpCircle className="h-4 w-4" />
                       </Button>
                     )}
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setEditProduct(item)}
+                      title="Edit details"
+                    >
+                      <Pencil className="h-4 w-4" />
+                    </Button>
                     <Button
                       variant="ghost"
                       size="sm"
@@ -372,6 +523,7 @@ function ItemsTable({
         </Table>
       </div>
       <StockUpdateModal product={stockUpdateProduct} onClose={() => setStockUpdateProduct(null)} />
+      <EditItemModal product={editProduct} onClose={() => setEditProduct(null)} />
     </>
   );
 }
