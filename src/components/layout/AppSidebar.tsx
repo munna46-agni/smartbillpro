@@ -6,7 +6,8 @@ import {
   Wallet, 
   FileText, 
   Settings,
-  Receipt
+  Receipt,
+  ChevronRight
 } from "lucide-react";
 import { NavLink as RouterNavLink, useLocation } from "react-router-dom";
 import {
@@ -38,21 +39,21 @@ export function AppSidebar() {
 
   return (
     <Sidebar className="border-r-0">
-      <SidebarHeader className="border-b border-sidebar-border px-6 py-5">
+      <SidebarHeader className="border-b border-sidebar-border px-5 py-4">
         <div className="flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-sidebar-primary">
-            <Receipt className="h-5 w-5 text-sidebar-primary-foreground" />
+          <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-gradient-to-br from-primary to-accent">
+            <Receipt className="h-5 w-5 text-white" />
           </div>
           <div>
-            <h1 className="text-lg font-bold text-sidebar-accent-foreground">Smart Bill</h1>
-            <p className="text-xs text-sidebar-foreground/70">POS System</p>
+            <h1 className="text-base font-bold text-sidebar-accent-foreground">SmartBill</h1>
+            <p className="text-[10px] text-sidebar-foreground/60 uppercase tracking-wider">Stationery & CSC</p>
           </div>
         </div>
       </SidebarHeader>
       
       <SidebarContent className="px-3 py-4">
         <SidebarGroup>
-          <SidebarGroupLabel className="px-3 text-xs font-semibold uppercase tracking-wider text-sidebar-foreground/50">
+          <SidebarGroupLabel className="px-3 text-[10px] font-semibold uppercase tracking-wider text-sidebar-foreground/40 mb-2">
             Menu
           </SidebarGroupLabel>
           <SidebarGroupContent>
@@ -64,15 +65,21 @@ export function AppSidebar() {
                     <SidebarMenuButton
                       asChild
                       className={cn(
-                        "h-11 gap-3 rounded-lg px-3 font-medium transition-all",
+                        "h-10 gap-3 rounded-lg px-3 font-medium transition-all group",
                         isActive
-                          ? "bg-sidebar-primary text-sidebar-primary-foreground shadow-md"
+                          ? "bg-sidebar-primary text-sidebar-primary-foreground"
                           : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
                       )}
                     >
-                      <RouterNavLink to={item.url}>
-                        <item.icon className="h-5 w-5" />
-                        <span>{item.title}</span>
+                      <RouterNavLink to={item.url} className="flex items-center justify-between w-full">
+                        <div className="flex items-center gap-3">
+                          <item.icon className="h-4 w-4" />
+                          <span className="text-sm">{item.title}</span>
+                        </div>
+                        <ChevronRight className={cn(
+                          "h-4 w-4 opacity-0 group-hover:opacity-50 transition-opacity",
+                          isActive && "opacity-70"
+                        )} />
                       </RouterNavLink>
                     </SidebarMenuButton>
                   </SidebarMenuItem>
@@ -83,9 +90,9 @@ export function AppSidebar() {
         </SidebarGroup>
       </SidebarContent>
       
-      <SidebarFooter className="border-t border-sidebar-border px-6 py-4">
-        <p className="text-xs text-sidebar-foreground/50">
-          © 2024 Smart Bill POS
+      <SidebarFooter className="border-t border-sidebar-border px-5 py-3">
+        <p className="text-[10px] text-sidebar-foreground/40">
+          © 2024 SmartBill POS
         </p>
       </SidebarFooter>
     </Sidebar>
