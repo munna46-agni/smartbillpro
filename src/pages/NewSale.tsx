@@ -91,11 +91,19 @@ function InvoicePreview({
         </DialogHeader>
         <div className="space-y-4 text-sm relative">
           {/* Watermark */}
-          {shopSettings.showWatermark && shopSettings.watermarkText && (
-            <div className="absolute inset-0 flex items-center justify-center pointer-events-none opacity-[0.06] z-0">
-              <span className="text-6xl font-bold text-foreground rotate-[-30deg] whitespace-nowrap">
-                {shopSettings.watermarkText}
-              </span>
+          {shopSettings.showWatermark && (
+            <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-0">
+              {shopSettings.watermarkType === "image" && shopSettings.watermarkImageUrl ? (
+                <img 
+                  src={shopSettings.watermarkImageUrl} 
+                  alt="Watermark" 
+                  className="max-w-[60%] max-h-[60%] object-contain opacity-[0.08] rotate-[-15deg]"
+                />
+              ) : shopSettings.watermarkText ? (
+                <span className="text-6xl font-bold text-foreground opacity-[0.06] rotate-[-30deg] whitespace-nowrap">
+                  {shopSettings.watermarkText}
+                </span>
+              ) : null}
             </div>
           )}
           

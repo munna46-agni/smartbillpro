@@ -5,13 +5,15 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { useShopSettings } from "@/hooks/useShopSettings";
-import { Store, Printer, Database, Info, Upload, X, Save, RotateCcw } from "lucide-react";
+import { Store, Printer, Database, Info, Upload, X, RotateCcw, Image, Type } from "lucide-react";
 import { toast } from "sonner";
 
 export default function Settings() {
   const { settings, updateSettings, resetSettings } = useShopSettings();
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const watermarkInputRef = useRef<HTMLInputElement>(null);
   
   const handleLogoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -29,12 +31,40 @@ export default function Settings() {
     }
   };
 
+  const handleWatermarkUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      if (file.size > 500 * 1024) {
+        toast.error("Watermark image must be smaller than 500KB");
+        return;
+      }
+      if (!file.type.includes("png")) {
+        toast.error("Please upload a PNG file for transparency support");
+        return;
+      }
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        updateSettings({ watermarkImageUrl: reader.result as string });
+        toast.success("Watermark image uploaded successfully");
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
   const removeLogo = () => {
     updateSettings({ logoUrl: null });
     if (fileInputRef.current) {
       fileInputRef.current.value = "";
     }
     toast.success("Logo removed");
+  };
+
+  const removeWatermarkImage = () => {
+    updateSettings({ watermarkImageUrl: null });
+    if (watermarkInputRef.current) {
+      watermarkInputRef.current.value = "";
+    }
+    toast.success("Watermark image removed");
   };
 
   const handleReset = () => {
@@ -159,13 +189,13 @@ export default function Settings() {
         </Card>
 
         {/* Invoice Watermark */}
-        <Card>
+        <Card className="md:col-span-2">
           <CardHeader>
             <CardTitle className="text-base flex items-center gap-2">
               <Printer className="h-5 w-5" />
               Invoice Watermark
             </CardTitle>
-            <CardDescription>Add a watermark text on invoices</CardDescription>
+            <CardDescription>Add a watermark on invoices (text or image)</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="flex items-center justify-between">
@@ -176,15 +206,95 @@ export default function Settings() {
                 onCheckedChange={(checked) => updateSettings({ showWatermark: checked })}
               />
             </div>
+            
             {settings.showWatermark && (
-              <div className="space-y-2">
-                <Label htmlFor="watermarkText">Watermark Text</Label>
-                <Input
-                  id="watermarkText"
-                  placeholder="e.g., Thank You!"
-                  value={settings.watermarkText}
-                  onChange={(e) => updateSettings({ watermarkText: e.target.value })}
-                />
+              <div className="space-y-4">
+                {/* Watermark Type Selection */}
+                <div className="space-y-3">
+                  <Label>Watermark Type</Label>
+                  <RadioGroup
+                    value={settings.watermarkType}
+                    onValueChange={(value: "text" | "image") => updateSettings({ watermarkType: value })}
+                    className="flex gap-4"
+                  >
+                    <div className="flex items-center space-x-2">
+                      <RadioGroupItem value="text" id="watermark-text" />
+                      <Label htmlFor="watermark-text" className="flex items-center gap-1 cursor-pointer">
+                        <Type className="h-4 w-4" />
+                        Text
+                      </Label>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <RadioGroupItem value="image" id="watermark-image" />
+                      <Label htmlFor="watermark-image" className="flex items-center gap-1 cursor-pointer">
+                        <Image className="h-4 w-4" />
+                        Image (PNG)
+                      </Label>
+                    </div>
+                  </RadioGroup>
+                </div>
+
+                {/* Text Watermark */}
+                {settings.watermarkType === "text" && (
+                  <div className="space-y-2">
+                    <Label htmlFor="watermarkText">Watermark Text</Label>
+                    <Input
+                      id="watermarkText"
+                      placeholder="e.g., Thank You!"
+                      value={settings.watermarkText}
+                      onChange={(e) => updateSettings({ watermarkText: e.target.value })}
+                    />
+                  </div>
+                )}
+
+                {/* Image Watermark */}
+                {settings.watermarkType === "image" && (
+                  <div className="space-y-3">
+                    <Label>Watermark Image</Label>
+                    <div className="flex items-center gap-4">
+                      {settings.watermarkImageUrl ? (
+                        <div className="relative">
+                          <img 
+                            src={settings.watermarkImageUrl} 
+                            alt="Watermark" 
+                            className="h-20 w-auto max-w-32 object-contain rounded-lg border bg-muted/50 p-2"
+                          />
+                          <Button
+                            variant="destructive"
+                            size="icon"
+                            className="absolute -top-2 -right-2 h-6 w-6 rounded-full"
+                            onClick={removeWatermarkImage}
+                          >
+                            <X className="h-3 w-3" />
+                          </Button>
+                        </div>
+                      ) : (
+                        <div className="h-20 w-20 rounded-lg border-2 border-dashed border-muted-foreground/30 flex items-center justify-center">
+                          <Image className="h-8 w-8 text-muted-foreground/50" />
+                        </div>
+                      )}
+                      <div className="space-y-2">
+                        <input
+                          ref={watermarkInputRef}
+                          type="file"
+                          accept="image/png"
+                          onChange={handleWatermarkUpload}
+                          className="hidden"
+                        />
+                        <Button
+                          variant="outline"
+                          onClick={() => watermarkInputRef.current?.click()}
+                        >
+                          <Upload className="h-4 w-4 mr-2" />
+                          Upload PNG
+                        </Button>
+                        <p className="text-xs text-muted-foreground">
+                          Max 500KB. PNG with transparency recommended.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
             )}
           </CardContent>

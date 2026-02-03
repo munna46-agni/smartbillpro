@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 
 export interface ShopSettings {
   shopName: string;
@@ -8,6 +8,8 @@ export interface ShopSettings {
   shopGST: string;
   logoUrl: string | null;
   watermarkText: string;
+  watermarkImageUrl: string | null;
+  watermarkType: "text" | "image";
   showWatermark: boolean;
 }
 
@@ -19,6 +21,8 @@ const DEFAULT_SETTINGS: ShopSettings = {
   shopGST: "",
   logoUrl: null,
   watermarkText: "Thank You!",
+  watermarkImageUrl: null,
+  watermarkType: "text",
   showWatermark: true,
 };
 
