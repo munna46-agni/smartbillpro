@@ -23,19 +23,24 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import { useProducts } from "@/hooks/useProducts";
-import { useCustomerDue, useCreateSale, SaleWithItems } from "@/hooks/useSales";
+import {
+  Tabs,
+  TabsList,
+  TabsTrigger,
+} from "@/components/ui/tabs";
+import { useProducts, ItemType } from "@/hooks/useProducts";
+import { useCustomerDue, useCreateSale } from "@/hooks/useSales";
 import { formatCurrency } from "@/lib/format";
 import { 
   ShoppingCart, 
   Plus, 
   Minus, 
   Trash2, 
-  Check,
-  ChevronsUpDown,
   AlertCircle,
   Printer,
-  Save
+  Save,
+  Package,
+  Wrench
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -54,6 +59,7 @@ interface CartItem {
   discount: number;
   total: number;
   available_stock: number;
+  item_type: "product" | "service";
 }
 
 function InvoicePreview({ 
@@ -70,6 +76,9 @@ function InvoicePreview({
     onClose();
   };
 
+  const productItems = items.filter(i => i.item_type === "product");
+  const serviceItems = items.filter(i => i.item_type === "service");
+
   return (
     <Dialog open onOpenChange={onClose}>
       <DialogContent className="max-w-md print:shadow-none">
@@ -79,7 +88,7 @@ function InvoicePreview({
         <div className="space-y-4 text-sm">
           <div className="text-center border-b pb-4">
             <h2 className="text-xl font-bold">Smart Bill POS</h2>
-            <p className="text-muted-foreground">Invoice Receipt</p>
+            <p className="text-xs text-muted-foreground">Stationery & Common Service Center</p>
           </div>
           
           <div className="flex justify-between text-xs text-muted-foreground">
@@ -103,14 +112,32 @@ function InvoicePreview({
               </tr>
             </thead>
             <tbody>
-              {items.map((item) => (
-                <tr key={item.id} className="border-b">
-                  <td className="py-2">{item.product_name}</td>
-                  <td className="text-center py-2">{item.quantity}</td>
-                  <td className="text-right py-2">{formatCurrency(item.rate)}</td>
-                  <td className="text-right py-2">{formatCurrency(item.total)}</td>
-                </tr>
-              ))}
+              {productItems.length > 0 && (
+                <>
+                  <tr><td colSpan={4} className="py-1 text-xs font-semibold text-muted-foreground">Products</td></tr>
+                  {productItems.map((item) => (
+                    <tr key={item.id} className="border-b">
+                      <td className="py-2">{item.product_name}</td>
+                      <td className="text-center py-2">{item.quantity}</td>
+                      <td className="text-right py-2">{formatCurrency(item.rate)}</td>
+                      <td className="text-right py-2">{formatCurrency(item.total)}</td>
+                    </tr>
+                  ))}
+                </>
+              )}
+              {serviceItems.length > 0 && (
+                <>
+                  <tr><td colSpan={4} className="py-1 text-xs font-semibold text-muted-foreground">Services</td></tr>
+                  {serviceItems.map((item) => (
+                    <tr key={item.id} className="border-b">
+                      <td className="py-2">{item.product_name}</td>
+                      <td className="text-center py-2">{item.quantity}</td>
+                      <td className="text-right py-2">{formatCurrency(item.rate)}</td>
+                      <td className="text-right py-2">{formatCurrency(item.total)}</td>
+                    </tr>
+                  ))}
+                </>
+              )}
             </tbody>
           </table>
           
@@ -136,7 +163,7 @@ function InvoicePreview({
           </div>
           
           <div className="text-center text-xs text-muted-foreground pt-4 border-t">
-            <p>Thank you for your purchase!</p>
+            <p>Thank you for your visit!</p>
           </div>
           
           <div className="flex gap-2 print:hidden">
@@ -155,6 +182,7 @@ function InvoicePreview({
 }
 
 export default function NewSale() {
+  const [itemTypeFilter, setItemTypeFilter] = useState<ItemType>("product");
   const { data: products, isLoading: productsLoading } = useProducts();
   const createSale = useCreateSale();
   
@@ -179,11 +207,14 @@ export default function NewSale() {
     return Math.max(0, grandTotal - paid);
   }, [grandTotal, paidAmount]);
   
+  const filteredProducts = products?.filter(p => p.item_type === itemTypeFilter);
+  
   const addToCart = (product: any) => {
     const existing = cart.find(item => item.product_name === product.name);
     
     if (existing) {
-      if (existing.quantity >= product.stock) {
+      // Services have unlimited "stock"
+      if (product.item_type === "product" && existing.quantity >= product.stock) {
         toast.error("Not enough stock available");
         return;
       }
@@ -197,7 +228,7 @@ export default function NewSale() {
           : item
       ));
     } else {
-      if (product.stock <= 0) {
+      if (product.item_type === "product" && product.stock <= 0) {
         toast.error("Product is out of stock");
         return;
       }
@@ -209,6 +240,7 @@ export default function NewSale() {
         discount: 0,
         total: product.selling_price,
         available_stock: product.stock,
+        item_type: product.item_type,
       }]);
     }
     setProductOpen(false);
@@ -217,7 +249,9 @@ export default function NewSale() {
   const updateQuantity = (id: string, delta: number) => {
     setCart(cart.map(item => {
       if (item.id === id) {
-        const newQty = Math.max(1, Math.min(item.available_stock, item.quantity + delta));
+        // Services have no stock limit
+        const maxQty = item.item_type === "service" ? Infinity : item.available_stock;
+        const newQty = Math.max(1, Math.min(maxQty, item.quantity + delta));
         return {
           ...item,
           quantity: newQty,
@@ -272,6 +306,7 @@ export default function NewSale() {
       rate: item.rate,
       discount: item.discount,
       total: item.total,
+      item_type: item.item_type,
     }));
     
     try {
@@ -289,6 +324,9 @@ export default function NewSale() {
       // Error handled by mutation
     }
   };
+
+  const productCount = cart.filter(i => i.item_type === "product").length;
+  const serviceCount = cart.filter(i => i.item_type === "service").length;
 
   return (
     <div className="space-y-4 animate-fade-in">
@@ -343,47 +381,64 @@ export default function NewSale() {
             </CardContent>
           </Card>
           
-          {/* Product Selection */}
+          {/* Product/Service Selection */}
           <Card>
             <CardHeader className="pb-3">
-              <div className="flex items-center justify-between">
+              <div className="flex flex-col sm:flex-row sm:items-center gap-4 sm:justify-between">
                 <CardTitle className="text-base">Items</CardTitle>
-                <Popover open={productOpen} onOpenChange={setProductOpen}>
-                  <PopoverTrigger asChild>
-                    <Button className="h-10">
-                      <Plus className="h-4 w-4 mr-2" />
-                      Add Item
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-80 p-0" align="end">
-                    <Command>
-                      <CommandInput placeholder="Search products..." />
-                      <CommandList>
-                        <CommandEmpty>No product found.</CommandEmpty>
-                        <CommandGroup>
-                          {products?.map((product) => (
-                            <CommandItem
-                              key={product.id}
-                              value={product.name}
-                              onSelect={() => addToCart(product)}
-                              className="cursor-pointer"
-                            >
-                              <div className="flex-1">
-                                <p className="font-medium">{product.name}</p>
-                                <p className="text-xs text-muted-foreground">
-                                  {formatCurrency(product.selling_price)} • Stock: {product.stock}
-                                </p>
-                              </div>
-                              {product.stock < 5 && (
-                                <span className="text-xs text-warning">Low</span>
-                              )}
-                            </CommandItem>
-                          ))}
-                        </CommandGroup>
-                      </CommandList>
-                    </Command>
-                  </PopoverContent>
-                </Popover>
+                <div className="flex gap-2">
+                  <Popover open={productOpen} onOpenChange={setProductOpen}>
+                    <PopoverTrigger asChild>
+                      <Button className="h-10 flex-1 sm:flex-none">
+                        <Plus className="h-4 w-4 mr-2" />
+                        Add Item
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-80 p-0" align="end">
+                      <div className="p-2 border-b">
+                        <Tabs value={itemTypeFilter} onValueChange={(v) => setItemTypeFilter(v as ItemType)}>
+                          <TabsList className="grid w-full grid-cols-2">
+                            <TabsTrigger value="product" className="text-xs gap-1">
+                              <Package className="h-3 w-3" />
+                              Products
+                            </TabsTrigger>
+                            <TabsTrigger value="service" className="text-xs gap-1">
+                              <Wrench className="h-3 w-3" />
+                              Services
+                            </TabsTrigger>
+                          </TabsList>
+                        </Tabs>
+                      </div>
+                      <Command>
+                        <CommandInput placeholder={`Search ${itemTypeFilter}s...`} />
+                        <CommandList>
+                          <CommandEmpty>No {itemTypeFilter} found.</CommandEmpty>
+                          <CommandGroup>
+                            {filteredProducts?.map((product) => (
+                              <CommandItem
+                                key={product.id}
+                                value={product.name}
+                                onSelect={() => addToCart(product)}
+                                className="cursor-pointer"
+                              >
+                                <div className="flex-1">
+                                  <p className="font-medium">{product.name}</p>
+                                  <p className="text-xs text-muted-foreground">
+                                    {formatCurrency(product.selling_price)}
+                                    {product.item_type === "product" && ` • Stock: ${product.stock}`}
+                                  </p>
+                                </div>
+                                {product.item_type === "product" && product.stock < 5 && (
+                                  <span className="text-xs text-warning">Low</span>
+                                )}
+                              </CommandItem>
+                            ))}
+                          </CommandGroup>
+                        </CommandList>
+                      </Command>
+                    </PopoverContent>
+                  </Popover>
+                </div>
               </div>
             </CardHeader>
             <CardContent>
@@ -391,11 +446,16 @@ export default function NewSale() {
                 <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
                   <ShoppingCart className="h-12 w-12 mb-3 opacity-50" />
                   <p>No items in cart</p>
-                  <p className="text-sm">Add products to start billing</p>
+                  <p className="text-sm">Add products or services to start billing</p>
                 </div>
               ) : (
                 <div className="space-y-3">
-                  {cart.map((item) => (
+                  {productCount > 0 && (
+                    <p className="text-xs font-semibold text-muted-foreground flex items-center gap-1">
+                      <Package className="h-3 w-3" /> Products ({productCount})
+                    </p>
+                  )}
+                  {cart.filter(i => i.item_type === "product").map((item) => (
                     <div 
                       key={item.id}
                       className="flex items-center gap-3 rounded-lg border bg-card p-3"
@@ -427,7 +487,69 @@ export default function NewSale() {
                         </Button>
                       </div>
                       
-                      <div className="w-24 hidden sm:block">
+                      <div className="w-20 hidden sm:block">
+                        <Input
+                          type="number"
+                          placeholder="Disc"
+                          value={item.discount || ""}
+                          onChange={(e) => updateDiscount(item.id, parseFloat(e.target.value) || 0)}
+                          className="h-8 text-sm"
+                        />
+                      </div>
+                      
+                      <div className="w-24 text-right font-semibold">
+                        {formatCurrency(item.total)}
+                      </div>
+                      
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 text-danger hover:text-danger hover:bg-danger/10"
+                        onClick={() => removeFromCart(item.id)}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  ))}
+                  
+                  {serviceCount > 0 && (
+                    <p className="text-xs font-semibold text-muted-foreground flex items-center gap-1 mt-4">
+                      <Wrench className="h-3 w-3" /> Services ({serviceCount})
+                    </p>
+                  )}
+                  {cart.filter(i => i.item_type === "service").map((item) => (
+                    <div 
+                      key={item.id}
+                      className="flex items-center gap-3 rounded-lg border border-accent/30 bg-accent/5 p-3"
+                    >
+                      <div className="flex-1 min-w-0">
+                        <p className="font-medium truncate">{item.product_name}</p>
+                        <p className="text-sm text-muted-foreground">
+                          {formatCurrency(item.rate)} × {item.quantity}
+                        </p>
+                      </div>
+                      
+                      <div className="flex items-center gap-2">
+                        <Button
+                          variant="outline"
+                          size="icon"
+                          className="h-8 w-8"
+                          onClick={() => updateQuantity(item.id, -1)}
+                        >
+                          <Minus className="h-3 w-3" />
+                        </Button>
+                        <span className="w-8 text-center font-medium">{item.quantity}</span>
+                        <Button
+                          variant="outline"
+                          size="icon"
+                          className="h-8 w-8"
+                          onClick={() => updateQuantity(item.id, 1)}
+                        >
+                          <Plus className="h-3 w-3" />
+                        </Button>
+                      </div>
+                      
+                      <div className="w-20 hidden sm:block">
                         <Input
                           type="number"
                           placeholder="Disc"

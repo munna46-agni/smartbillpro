@@ -50,6 +50,7 @@ export type Database = {
           cost_price: number
           created_at: string
           id: string
+          item_type: string
           name: string
           selling_price: number
           stock: number
@@ -60,6 +61,7 @@ export type Database = {
           cost_price?: number
           created_at?: string
           id?: string
+          item_type?: string
           name: string
           selling_price?: number
           stock?: number
@@ -70,6 +72,7 @@ export type Database = {
           cost_price?: number
           created_at?: string
           id?: string
+          item_type?: string
           name?: string
           selling_price?: number
           stock?: number
@@ -118,6 +121,7 @@ export type Database = {
           created_at: string
           discount: number
           id: string
+          item_type: string
           product_name: string
           quantity: number
           rate: number
@@ -128,6 +132,7 @@ export type Database = {
           created_at?: string
           discount?: number
           id?: string
+          item_type?: string
           product_name: string
           quantity?: number
           rate?: number
@@ -138,6 +143,7 @@ export type Database = {
           created_at?: string
           discount?: number
           id?: string
+          item_type?: string
           product_name?: string
           quantity?: number
           rate?: number
