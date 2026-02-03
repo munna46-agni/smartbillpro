@@ -2,6 +2,8 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
+export type ItemType = "product" | "service";
+
 export interface Product {
   id: string;
   name: string;
@@ -9,19 +11,22 @@ export interface Product {
   selling_price: number;
   stock: number;
   category: string | null;
+  item_type: ItemType;
   created_at: string;
   updated_at: string;
 }
 
-export function useProducts() {
+export function useProducts(itemType?: ItemType) {
   return useQuery({
-    queryKey: ["products"],
+    queryKey: ["products", itemType],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("products")
-        .select("*")
-        .order("name");
+      let query = supabase.from("products").select("*").order("name");
       
+      if (itemType) {
+        query = query.eq("item_type", itemType);
+      }
+      
+      const { data, error } = await query;
       if (error) throw error;
       return data as Product[];
     },
@@ -35,6 +40,7 @@ export function useLowStockProducts(threshold = 5) {
       const { data, error } = await supabase
         .from("products")
         .select("*")
+        .eq("item_type", "product") // Only products have stock
         .lt("stock", threshold)
         .order("stock");
       
@@ -49,9 +55,14 @@ export function useAddProduct() {
   
   return useMutation({
     mutationFn: async (product: Omit<Product, "id" | "created_at" | "updated_at">) => {
+      // Services don't need stock tracking
+      const productData = product.item_type === "service" 
+        ? { ...product, stock: 0 } 
+        : product;
+        
       const { data, error } = await supabase
         .from("products")
-        .insert(product)
+        .insert(productData)
         .select()
         .single();
       

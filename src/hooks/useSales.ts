@@ -24,6 +24,7 @@ export interface SaleItem {
   rate: number;
   discount: number;
   total: number;
+  item_type: "product" | "service";
   created_at: string;
 }
 
@@ -170,15 +171,18 @@ export function useCreateSale() {
       
       if (itemsError) throw itemsError;
       
-      // Update stock for each item
+      // Update stock for each item (only for products, not services)
       for (const item of items) {
+        if (item.item_type === "service") continue; // Services don't have stock
+        
         const { data: product, error: productError } = await supabase
           .from("products")
-          .select("stock")
+          .select("stock, item_type")
           .eq("name", item.product_name)
           .single();
         
         if (productError) continue;
+        if (product.item_type === "service") continue;
         
         const newStock = Math.max(0, (product.stock || 0) - item.quantity);
         await supabase
