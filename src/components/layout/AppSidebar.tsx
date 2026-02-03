@@ -6,7 +6,6 @@ import {
   Wallet, 
   FileText, 
   Settings,
-  Receipt,
   ChevronRight
 } from "lucide-react";
 import { NavLink as RouterNavLink, useLocation } from "react-router-dom";
@@ -23,6 +22,7 @@ import {
   SidebarFooter,
 } from "@/components/ui/sidebar";
 import { cn } from "@/lib/utils";
+import smartbillLogo from "@/assets/smartbill-logo.jpg";
 
 const navigationItems = [
   { title: "Dashboard", url: "/", icon: LayoutDashboard },
@@ -41,9 +41,11 @@ export function AppSidebar() {
     <Sidebar className="border-r-0">
       <SidebarHeader className="border-b border-sidebar-border px-5 py-4">
         <div className="flex items-center gap-3">
-          <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-gradient-to-br from-primary to-accent">
-            <Receipt className="h-5 w-5 text-white" />
-          </div>
+          <img 
+            src={smartbillLogo} 
+            alt="SmartBill Logo" 
+            className="h-10 w-10 rounded-lg object-cover"
+          />
           <div>
             <h1 className="text-base font-bold text-sidebar-accent-foreground">SmartBill</h1>
             <p className="text-[10px] text-sidebar-foreground/60 uppercase tracking-wider">Stationery & CSC</p>
