@@ -1,0 +1,153 @@
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
+
+export interface Product {
+  id: string;
+  name: string;
+  cost_price: number;
+  selling_price: number;
+  stock: number;
+  category: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export function useProducts() {
+  return useQuery({
+    queryKey: ["products"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("products")
+        .select("*")
+        .order("name");
+      
+      if (error) throw error;
+      return data as Product[];
+    },
+  });
+}
+
+export function useLowStockProducts(threshold = 5) {
+  return useQuery({
+    queryKey: ["products", "low-stock", threshold],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("products")
+        .select("*")
+        .lt("stock", threshold)
+        .order("stock");
+      
+      if (error) throw error;
+      return data as Product[];
+    },
+  });
+}
+
+export function useAddProduct() {
+  const queryClient = useQueryClient();
+  
+  return useMutation({
+    mutationFn: async (product: Omit<Product, "id" | "created_at" | "updated_at">) => {
+      const { data, error } = await supabase
+        .from("products")
+        .insert(product)
+        .select()
+        .single();
+      
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["products"] });
+      toast.success("Product added successfully");
+    },
+    onError: (error: Error) => {
+      toast.error(`Failed to add product: ${error.message}`);
+    },
+  });
+}
+
+export function useUpdateProduct() {
+  const queryClient = useQueryClient();
+  
+  return useMutation({
+    mutationFn: async ({ id, ...product }: Partial<Product> & { id: string }) => {
+      const { data, error } = await supabase
+        .from("products")
+        .update(product)
+        .eq("id", id)
+        .select()
+        .single();
+      
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["products"] });
+      toast.success("Product updated successfully");
+    },
+    onError: (error: Error) => {
+      toast.error(`Failed to update product: ${error.message}`);
+    },
+  });
+}
+
+export function useUpdateStock() {
+  const queryClient = useQueryClient();
+  
+  return useMutation({
+    mutationFn: async ({ id, stockChange }: { id: string; stockChange: number }) => {
+      // First get current stock
+      const { data: current, error: fetchError } = await supabase
+        .from("products")
+        .select("stock")
+        .eq("id", id)
+        .single();
+      
+      if (fetchError) throw fetchError;
+      
+      const newStock = (current.stock || 0) + stockChange;
+      if (newStock < 0) throw new Error("Stock cannot be negative");
+      
+      const { data, error } = await supabase
+        .from("products")
+        .update({ stock: newStock })
+        .eq("id", id)
+        .select()
+        .single();
+      
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["products"] });
+      toast.success("Stock updated successfully");
+    },
+    onError: (error: Error) => {
+      toast.error(`Failed to update stock: ${error.message}`);
+    },
+  });
+}
+
+export function useDeleteProduct() {
+  const queryClient = useQueryClient();
+  
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase
+        .from("products")
+        .delete()
+        .eq("id", id);
+      
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["products"] });
+      toast.success("Product deleted successfully");
+    },
+    onError: (error: Error) => {
+      toast.error(`Failed to delete product: ${error.message}`);
+    },
+  });
+}
