@@ -1,8 +1,47 @@
+import { useState, useRef } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Settings as SettingsIcon, Store, Printer, Database, Info } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
+import { Textarea } from "@/components/ui/textarea";
+import { useShopSettings } from "@/hooks/useShopSettings";
+import { Store, Printer, Database, Info, Upload, X, Save, RotateCcw } from "lucide-react";
+import { toast } from "sonner";
 
 export default function Settings() {
+  const { settings, updateSettings, resetSettings } = useShopSettings();
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  
+  const handleLogoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      if (file.size > 500 * 1024) {
+        toast.error("Logo must be smaller than 500KB");
+        return;
+      }
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        updateSettings({ logoUrl: reader.result as string });
+        toast.success("Logo uploaded successfully");
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const removeLogo = () => {
+    updateSettings({ logoUrl: null });
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+    }
+    toast.success("Logo removed");
+  };
+
+  const handleReset = () => {
+    resetSettings();
+    toast.success("Settings reset to defaults");
+  };
+
   return (
     <div className="space-y-4 animate-fade-in">
       <div>
@@ -11,35 +50,143 @@ export default function Settings() {
       </div>
       
       <div className="grid gap-4 md:grid-cols-2">
-        <Card>
+        {/* Shop Details */}
+        <Card className="md:col-span-2">
           <CardHeader>
             <CardTitle className="text-base flex items-center gap-2">
               <Store className="h-5 w-5" />
               Shop Details
             </CardTitle>
-            <CardDescription>Configure your shop information</CardDescription>
+            <CardDescription>Configure your shop information for invoices</CardDescription>
           </CardHeader>
-          <CardContent>
-            <p className="text-sm text-muted-foreground">
-              Shop details configuration coming soon. This will include shop name, address, 
-              GST number, and contact information for invoices.
-            </p>
+          <CardContent className="space-y-6">
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="space-y-2">
+                <Label htmlFor="shopName">Shop Name</Label>
+                <Input
+                  id="shopName"
+                  placeholder="Enter shop name"
+                  value={settings.shopName}
+                  onChange={(e) => updateSettings({ shopName: e.target.value })}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="shopTagline">Tagline</Label>
+                <Input
+                  id="shopTagline"
+                  placeholder="e.g., Stationery & CSC"
+                  value={settings.shopTagline}
+                  onChange={(e) => updateSettings({ shopTagline: e.target.value })}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="shopPhone">Phone Number</Label>
+                <Input
+                  id="shopPhone"
+                  placeholder="Enter phone number"
+                  value={settings.shopPhone}
+                  onChange={(e) => updateSettings({ shopPhone: e.target.value })}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="shopGST">GST Number (Optional)</Label>
+                <Input
+                  id="shopGST"
+                  placeholder="Enter GST number"
+                  value={settings.shopGST}
+                  onChange={(e) => updateSettings({ shopGST: e.target.value })}
+                />
+              </div>
+              <div className="space-y-2 sm:col-span-2">
+                <Label htmlFor="shopAddress">Shop Address</Label>
+                <Textarea
+                  id="shopAddress"
+                  placeholder="Enter full address"
+                  value={settings.shopAddress}
+                  onChange={(e) => updateSettings({ shopAddress: e.target.value })}
+                  rows={2}
+                />
+              </div>
+            </div>
+
+            {/* Logo Upload */}
+            <div className="space-y-3">
+              <Label>Shop Logo</Label>
+              <div className="flex items-center gap-4">
+                {settings.logoUrl ? (
+                  <div className="relative">
+                    <img 
+                      src={settings.logoUrl} 
+                      alt="Shop Logo" 
+                      className="h-20 w-20 object-contain rounded-lg border bg-white p-1"
+                    />
+                    <Button
+                      variant="destructive"
+                      size="icon"
+                      className="absolute -top-2 -right-2 h-6 w-6 rounded-full"
+                      onClick={removeLogo}
+                    >
+                      <X className="h-3 w-3" />
+                    </Button>
+                  </div>
+                ) : (
+                  <div className="h-20 w-20 rounded-lg border-2 border-dashed border-muted-foreground/30 flex items-center justify-center">
+                    <Store className="h-8 w-8 text-muted-foreground/50" />
+                  </div>
+                )}
+                <div className="space-y-2">
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/*"
+                    onChange={handleLogoUpload}
+                    className="hidden"
+                  />
+                  <Button
+                    variant="outline"
+                    onClick={() => fileInputRef.current?.click()}
+                  >
+                    <Upload className="h-4 w-4 mr-2" />
+                    Upload Logo
+                  </Button>
+                  <p className="text-xs text-muted-foreground">
+                    Max 500KB. PNG or JPG recommended.
+                  </p>
+                </div>
+              </div>
+            </div>
           </CardContent>
         </Card>
-        
+
+        {/* Invoice Watermark */}
         <Card>
           <CardHeader>
             <CardTitle className="text-base flex items-center gap-2">
               <Printer className="h-5 w-5" />
-              Print Settings
+              Invoice Watermark
             </CardTitle>
-            <CardDescription>Configure thermal printer</CardDescription>
+            <CardDescription>Add a watermark text on invoices</CardDescription>
           </CardHeader>
-          <CardContent>
-            <p className="text-sm text-muted-foreground">
-              Printer configuration coming soon. This will include paper size, 
-              print format, and auto-print options.
-            </p>
+          <CardContent className="space-y-4">
+            <div className="flex items-center justify-between">
+              <Label htmlFor="showWatermark">Enable Watermark</Label>
+              <Switch
+                id="showWatermark"
+                checked={settings.showWatermark}
+                onCheckedChange={(checked) => updateSettings({ showWatermark: checked })}
+              />
+            </div>
+            {settings.showWatermark && (
+              <div className="space-y-2">
+                <Label htmlFor="watermarkText">Watermark Text</Label>
+                <Input
+                  id="watermarkText"
+                  placeholder="e.g., Thank You!"
+                  value={settings.watermarkText}
+                  onChange={(e) => updateSettings({ watermarkText: e.target.value })}
+                />
+              </div>
+            )}
           </CardContent>
         </Card>
         
@@ -49,17 +196,24 @@ export default function Settings() {
               <Database className="h-5 w-5" />
               Data Management
             </CardTitle>
-            <CardDescription>Backup and export options</CardDescription>
+            <CardDescription>Backup and reset options</CardDescription>
           </CardHeader>
-          <CardContent>
-            <p className="text-sm text-muted-foreground">
-              Data export and backup features coming soon. Export sales reports, 
-              inventory lists, and customer data.
+          <CardContent className="space-y-4">
+            <Button 
+              variant="outline" 
+              className="w-full" 
+              onClick={handleReset}
+            >
+              <RotateCcw className="h-4 w-4 mr-2" />
+              Reset to Defaults
+            </Button>
+            <p className="text-xs text-muted-foreground">
+              This will reset shop details and invoice settings to defaults.
             </p>
           </CardContent>
         </Card>
         
-        <Card>
+        <Card className="md:col-span-2">
           <CardHeader>
             <CardTitle className="text-base flex items-center gap-2">
               <Info className="h-5 w-5" />
@@ -67,18 +221,20 @@ export default function Settings() {
             </CardTitle>
             <CardDescription>System information</CardDescription>
           </CardHeader>
-          <CardContent className="space-y-2">
-            <div className="flex justify-between text-sm">
-              <span className="text-muted-foreground">Version</span>
-              <span className="font-medium">1.0.0</span>
-            </div>
-            <div className="flex justify-between text-sm">
-              <span className="text-muted-foreground">Platform</span>
-              <span className="font-medium">Smart Bill POS</span>
-            </div>
-            <div className="flex justify-between text-sm">
-              <span className="text-muted-foreground">Backend</span>
-              <span className="font-medium">Lovable Cloud</span>
+          <CardContent>
+            <div className="grid gap-4 sm:grid-cols-3">
+              <div className="flex justify-between text-sm sm:flex-col sm:gap-1">
+                <span className="text-muted-foreground">Version</span>
+                <span className="font-medium">1.0.0</span>
+              </div>
+              <div className="flex justify-between text-sm sm:flex-col sm:gap-1">
+                <span className="text-muted-foreground">Platform</span>
+                <span className="font-medium">Smart Bill POS</span>
+              </div>
+              <div className="flex justify-between text-sm sm:flex-col sm:gap-1">
+                <span className="text-muted-foreground">Backend</span>
+                <span className="font-medium">Lovable Cloud</span>
+              </div>
             </div>
           </CardContent>
         </Card>
