@@ -30,6 +30,7 @@ import {
 } from "@/components/ui/tabs";
 import { useProducts, ItemType } from "@/hooks/useProducts";
 import { useCustomerDue, useCreateSale } from "@/hooks/useSales";
+import { useShopSettings } from "@/hooks/useShopSettings";
 import { formatCurrency } from "@/lib/format";
 import { 
   ShoppingCart, 
@@ -40,7 +41,8 @@ import {
   Printer,
   Save,
   Package,
-  Wrench
+  Wrench,
+  Store
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -65,11 +67,13 @@ interface CartItem {
 function InvoicePreview({ 
   sale, 
   items, 
-  onClose 
+  onClose,
+  shopSettings
 }: { 
   sale: any; 
   items: CartItem[]; 
   onClose: () => void;
+  shopSettings: any;
 }) {
   const handlePrint = () => {
     window.print();
@@ -85,85 +89,117 @@ function InvoicePreview({
         <DialogHeader>
           <DialogTitle className="text-center">Invoice</DialogTitle>
         </DialogHeader>
-        <div className="space-y-4 text-sm">
-          <div className="text-center border-b pb-4">
-            <h2 className="text-xl font-bold">Smart Bill POS</h2>
-            <p className="text-xs text-muted-foreground">Stationery & Common Service Center</p>
-          </div>
-          
-          <div className="flex justify-between text-xs text-muted-foreground">
-            <span>{new Date().toLocaleString('en-IN')}</span>
-          </div>
-          
-          {sale.customer_name && (
-            <div className="border-b pb-2">
-              <p><strong>Customer:</strong> {sale.customer_name}</p>
-              {sale.mobile_number && <p><strong>Mobile:</strong> {sale.mobile_number}</p>}
+        <div className="space-y-4 text-sm relative">
+          {/* Watermark */}
+          {shopSettings.showWatermark && shopSettings.watermarkText && (
+            <div className="absolute inset-0 flex items-center justify-center pointer-events-none opacity-[0.06] z-0">
+              <span className="text-6xl font-bold text-foreground rotate-[-30deg] whitespace-nowrap">
+                {shopSettings.watermarkText}
+              </span>
             </div>
           )}
           
-          <table className="w-full text-xs">
-            <thead>
-              <tr className="border-b">
-                <th className="text-left py-2">Item</th>
-                <th className="text-center py-2">Qty</th>
-                <th className="text-right py-2">Rate</th>
-                <th className="text-right py-2">Total</th>
-              </tr>
-            </thead>
-            <tbody>
-              {productItems.length > 0 && (
-                <>
-                  <tr><td colSpan={4} className="py-1 text-xs font-semibold text-muted-foreground">Products</td></tr>
-                  {productItems.map((item) => (
-                    <tr key={item.id} className="border-b">
-                      <td className="py-2">{item.product_name}</td>
-                      <td className="text-center py-2">{item.quantity}</td>
-                      <td className="text-right py-2">{formatCurrency(item.rate)}</td>
-                      <td className="text-right py-2">{formatCurrency(item.total)}</td>
-                    </tr>
-                  ))}
-                </>
+          <div className="relative z-10">
+            {/* Header with Logo */}
+            <div className="text-center border-b pb-4">
+              {shopSettings.logoUrl && (
+                <div className="flex justify-center mb-2">
+                  <img 
+                    src={shopSettings.logoUrl} 
+                    alt="Shop Logo" 
+                    className="h-12 w-12 object-contain"
+                  />
+                </div>
               )}
-              {serviceItems.length > 0 && (
-                <>
-                  <tr><td colSpan={4} className="py-1 text-xs font-semibold text-muted-foreground">Services</td></tr>
-                  {serviceItems.map((item) => (
-                    <tr key={item.id} className="border-b">
-                      <td className="py-2">{item.product_name}</td>
-                      <td className="text-center py-2">{item.quantity}</td>
-                      <td className="text-right py-2">{formatCurrency(item.rate)}</td>
-                      <td className="text-right py-2">{formatCurrency(item.total)}</td>
-                    </tr>
-                  ))}
-                </>
+              <h2 className="text-xl font-bold">{shopSettings.shopName}</h2>
+              {shopSettings.shopTagline && (
+                <p className="text-xs text-muted-foreground">{shopSettings.shopTagline}</p>
               )}
-            </tbody>
-          </table>
-          
-          <div className="space-y-1 border-t pt-2">
-            <div className="flex justify-between">
-              <span>Grand Total:</span>
-              <span className="font-bold">{formatCurrency(sale.total_amount)}</span>
+              {shopSettings.shopAddress && (
+                <p className="text-xs text-muted-foreground mt-1">{shopSettings.shopAddress}</p>
+              )}
+              {shopSettings.shopPhone && (
+                <p className="text-xs text-muted-foreground">Ph: {shopSettings.shopPhone}</p>
+              )}
+              {shopSettings.shopGST && (
+                <p className="text-xs text-muted-foreground">GST: {shopSettings.shopGST}</p>
+              )}
             </div>
-            <div className="flex justify-between">
-              <span>Paid Amount:</span>
-              <span className="text-success">{formatCurrency(sale.paid_amount)}</span>
+            
+            <div className="flex justify-between text-xs text-muted-foreground py-2">
+              <span>{new Date().toLocaleString('en-IN')}</span>
             </div>
-            {sale.balance_amount > 0 && (
-              <div className="flex justify-between text-danger font-medium">
-                <span>Balance Due:</span>
-                <span>{formatCurrency(sale.balance_amount)}</span>
+            
+            {sale.customer_name && (
+              <div className="border-b pb-2">
+                <p><strong>Customer:</strong> {sale.customer_name}</p>
+                {sale.mobile_number && <p><strong>Mobile:</strong> {sale.mobile_number}</p>}
               </div>
             )}
-            <div className="flex justify-between text-xs text-muted-foreground">
-              <span>Payment Mode:</span>
-              <span>{sale.payment_mode}</span>
+            
+            <table className="w-full text-xs">
+              <thead>
+                <tr className="border-b">
+                  <th className="text-left py-2">Item</th>
+                  <th className="text-center py-2">Qty</th>
+                  <th className="text-right py-2">Rate</th>
+                  <th className="text-right py-2">Total</th>
+                </tr>
+              </thead>
+              <tbody>
+                {productItems.length > 0 && (
+                  <>
+                    <tr><td colSpan={4} className="py-1 text-xs font-semibold text-muted-foreground">Products</td></tr>
+                    {productItems.map((item) => (
+                      <tr key={item.id} className="border-b">
+                        <td className="py-2">{item.product_name}</td>
+                        <td className="text-center py-2">{item.quantity}</td>
+                        <td className="text-right py-2">{formatCurrency(item.rate)}</td>
+                        <td className="text-right py-2">{formatCurrency(item.total)}</td>
+                      </tr>
+                    ))}
+                  </>
+                )}
+                {serviceItems.length > 0 && (
+                  <>
+                    <tr><td colSpan={4} className="py-1 text-xs font-semibold text-muted-foreground">Services</td></tr>
+                    {serviceItems.map((item) => (
+                      <tr key={item.id} className="border-b">
+                        <td className="py-2">{item.product_name}</td>
+                        <td className="text-center py-2">{item.quantity}</td>
+                        <td className="text-right py-2">{formatCurrency(item.rate)}</td>
+                        <td className="text-right py-2">{formatCurrency(item.total)}</td>
+                      </tr>
+                    ))}
+                  </>
+                )}
+              </tbody>
+            </table>
+            
+            <div className="space-y-1 border-t pt-2">
+              <div className="flex justify-between">
+                <span>Grand Total:</span>
+                <span className="font-bold">{formatCurrency(sale.total_amount)}</span>
+              </div>
+              <div className="flex justify-between">
+                <span>Paid Amount:</span>
+                <span className="text-success">{formatCurrency(sale.paid_amount)}</span>
+              </div>
+              {sale.balance_amount > 0 && (
+                <div className="flex justify-between text-danger font-medium">
+                  <span>Balance Due:</span>
+                  <span>{formatCurrency(sale.balance_amount)}</span>
+                </div>
+              )}
+              <div className="flex justify-between text-xs text-muted-foreground">
+                <span>Payment Mode:</span>
+                <span>{sale.payment_mode}</span>
+              </div>
             </div>
-          </div>
-          
-          <div className="text-center text-xs text-muted-foreground pt-4 border-t">
-            <p>Thank you for your visit!</p>
+            
+            <div className="text-center text-xs text-muted-foreground pt-4 border-t">
+              <p>Thank you for your visit!</p>
+            </div>
           </div>
           
           <div className="flex gap-2 print:hidden">
@@ -185,6 +221,7 @@ export default function NewSale() {
   const [itemTypeFilter, setItemTypeFilter] = useState<ItemType>("product");
   const { data: products, isLoading: productsLoading } = useProducts();
   const createSale = useCreateSale();
+  const { settings: shopSettings } = useShopSettings();
   
   const [customerName, setCustomerName] = useState("");
   const [mobileNumber, setMobileNumber] = useState("");
@@ -252,6 +289,21 @@ export default function NewSale() {
         // Services have no stock limit
         const maxQty = item.item_type === "service" ? Infinity : item.available_stock;
         const newQty = Math.max(1, Math.min(maxQty, item.quantity + delta));
+        return {
+          ...item,
+          quantity: newQty,
+          total: newQty * item.rate - item.discount,
+        };
+      }
+      return item;
+    }));
+  };
+
+  const setQuantity = (id: string, qty: number) => {
+    setCart(cart.map(item => {
+      if (item.id === id) {
+        const maxQty = item.item_type === "service" ? Infinity : item.available_stock;
+        const newQty = Math.max(1, Math.min(maxQty, qty || 1));
         return {
           ...item,
           quantity: newQty,
@@ -467,7 +519,7 @@ export default function NewSale() {
                         </p>
                       </div>
                       
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-1">
                         <Button
                           variant="outline"
                           size="icon"
@@ -476,7 +528,14 @@ export default function NewSale() {
                         >
                           <Minus className="h-3 w-3" />
                         </Button>
-                        <span className="w-8 text-center font-medium">{item.quantity}</span>
+                        <Input
+                          type="number"
+                          value={item.quantity}
+                          onChange={(e) => setQuantity(item.id, parseInt(e.target.value) || 1)}
+                          className="h-8 w-16 text-center text-sm font-medium"
+                          min={1}
+                          max={item.available_stock}
+                        />
                         <Button
                           variant="outline"
                           size="icon"
@@ -529,7 +588,7 @@ export default function NewSale() {
                         </p>
                       </div>
                       
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-1">
                         <Button
                           variant="outline"
                           size="icon"
@@ -538,7 +597,13 @@ export default function NewSale() {
                         >
                           <Minus className="h-3 w-3" />
                         </Button>
-                        <span className="w-8 text-center font-medium">{item.quantity}</span>
+                        <Input
+                          type="number"
+                          value={item.quantity}
+                          onChange={(e) => setQuantity(item.id, parseInt(e.target.value) || 1)}
+                          className="h-8 w-16 text-center text-sm font-medium"
+                          min={1}
+                        />
                         <Button
                           variant="outline"
                           size="icon"
@@ -651,6 +716,7 @@ export default function NewSale() {
           sale={lastSale}
           items={lastSale.items}
           onClose={() => setShowInvoice(false)}
+          shopSettings={shopSettings}
         />
       )}
     </div>
