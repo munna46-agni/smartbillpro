@@ -321,6 +321,51 @@ export type Database = {
         }
         Relationships: []
       }
+      suppliers: {
+        Row: {
+          address: string | null
+          contact_person: string | null
+          created_at: string
+          email: string | null
+          gst_number: string | null
+          id: string
+          mobile_number: string | null
+          name: string
+          notes: string | null
+          total_paid: number
+          total_purchases: number
+          updated_at: string
+        }
+        Insert: {
+          address?: string | null
+          contact_person?: string | null
+          created_at?: string
+          email?: string | null
+          gst_number?: string | null
+          id?: string
+          mobile_number?: string | null
+          name: string
+          notes?: string | null
+          total_paid?: number
+          total_purchases?: number
+          updated_at?: string
+        }
+        Update: {
+          address?: string | null
+          contact_person?: string | null
+          created_at?: string
+          email?: string | null
+          gst_number?: string | null
+          id?: string
+          mobile_number?: string | null
+          name?: string
+          notes?: string | null
+          total_paid?: number
+          total_purchases?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
