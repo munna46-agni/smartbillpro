@@ -124,6 +124,45 @@ export type Database = {
         }
         Relationships: []
       }
+      customers: {
+        Row: {
+          address: string | null
+          created_at: string
+          email: string | null
+          id: string
+          mobile_number: string
+          name: string
+          notes: string | null
+          total_balance: number
+          total_purchases: number
+          updated_at: string
+        }
+        Insert: {
+          address?: string | null
+          created_at?: string
+          email?: string | null
+          id?: string
+          mobile_number: string
+          name: string
+          notes?: string | null
+          total_balance?: number
+          total_purchases?: number
+          updated_at?: string
+        }
+        Update: {
+          address?: string | null
+          created_at?: string
+          email?: string | null
+          id?: string
+          mobile_number?: string
+          name?: string
+          notes?: string | null
+          total_balance?: number
+          total_purchases?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       products: {
         Row: {
           category: string | null
