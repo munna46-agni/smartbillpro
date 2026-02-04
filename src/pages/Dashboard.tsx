@@ -1,7 +1,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useSalesSummary, useTodaySales, useSales } from "@/hooks/useSales";
-import { useLowStockProducts } from "@/hooks/useProducts";
+import { useProducts, useLowStockProducts } from "@/hooks/useProducts";
 import { usePurchases } from "@/hooks/usePurchases";
 import { formatCurrency, formatDate } from "@/lib/format";
 import { 
@@ -13,12 +13,13 @@ import {
   Package,
   ShoppingCart,
   Truck,
-  ArrowRight,
-  BarChart3
+  AlertTriangle,
+  IndianRupee
 } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Link } from "react-router-dom";
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from "recharts";
+import { Badge } from "@/components/ui/badge";
 
 // Summary Cards with Gradients
 function GradientStatCard({ 
@@ -68,6 +69,7 @@ function TodaySalesCard() {
   const cardTotal = todaySales?.filter(s => s.payment_mode === "Card").reduce((sum, s) => sum + s.paid_amount, 0) || 0;
   const creditTotal = todaySales?.reduce((sum, s) => sum + s.balance_amount, 0) || 0;
   const totalToday = todaySales?.reduce((sum, s) => sum + s.total_amount, 0) || 0;
+  const invoiceCount = todaySales?.filter(s => s.bill_type === "Invoice").length || 0;
   
   const total = cashTotal + upiTotal + cardTotal;
   const cashPercent = total > 0 ? (cashTotal / total) * 100 : 0;
@@ -85,7 +87,7 @@ function TodaySalesCard() {
           <div>
             <p className="text-sm text-muted-foreground">Today — {new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}</p>
             <p className="text-3xl font-bold mt-1">{formatCurrency(totalToday)}</p>
-            <p className="text-sm text-muted-foreground">Today's total sales</p>
+            <p className="text-sm text-muted-foreground">{invoiceCount} invoices today</p>
           </div>
           <div className="flex flex-col gap-1.5">
             <span className="badge-cash">Cash {formatCurrency(cashTotal)}</span>
@@ -98,9 +100,9 @@ function TodaySalesCard() {
         <div className="space-y-2">
           <p className="text-sm font-medium text-muted-foreground">Payment Share</p>
           <div className="h-2 w-full rounded-full bg-muted overflow-hidden flex">
-            {cashPercent > 0 && <div className="h-full bg-emerald-500" style={{ width: `${cashPercent}%` }} />}
-            {upiPercent > 0 && <div className="h-full bg-violet-500" style={{ width: `${upiPercent}%` }} />}
-            {cardPercent > 0 && <div className="h-full bg-rose-500" style={{ width: `${cardPercent}%` }} />}
+            {cashPercent > 0 && <div className="h-full bg-primary" style={{ width: `${cashPercent}%` }} />}
+            {upiPercent > 0 && <div className="h-full bg-secondary" style={{ width: `${upiPercent}%` }} />}
+            {cardPercent > 0 && <div className="h-full bg-accent" style={{ width: `${cardPercent}%` }} />}
           </div>
           <p className="text-xs text-muted-foreground">
             {cashPercent.toFixed(0)}% Cash • {upiPercent.toFixed(0)}% UPI • {cardPercent.toFixed(0)}% Card
@@ -141,17 +143,19 @@ function SalesChartCard() {
     };
   });
 
+  const totalWeekSales = chartData.reduce((sum, d) => sum + d.sales, 0);
+
   return (
     <Card>
       <CardHeader className="pb-2">
         <div className="flex items-center justify-between">
           <div>
             <CardTitle className="text-base">Sales — last 7 days</CardTitle>
-            <p className="text-sm text-muted-foreground">Daily totals</p>
+            <p className="text-sm text-muted-foreground">{formatCurrency(totalWeekSales)} total</p>
           </div>
-          <Link to="/sales-history">
+          <Link to="/reports/sales">
             <Button variant="outline" size="sm">
-              Open Report
+              View Report
             </Button>
           </Link>
         </div>
@@ -169,7 +173,7 @@ function SalesChartCard() {
               <YAxis 
                 tick={{ fontSize: 11 }} 
                 stroke="hsl(var(--muted-foreground))"
-                tickFormatter={(value) => `₹${value}`}
+                tickFormatter={(value) => `₹${(value / 1000).toFixed(0)}k`}
               />
               <Tooltip
                 contentStyle={{
@@ -195,12 +199,53 @@ function SalesChartCard() {
   );
 }
 
+function QuickStatsCard() {
+  const { data: allProducts = [] } = useProducts();
+  const { data: purchases = [] } = usePurchases();
+  const { data: summary } = useSalesSummary();
+
+  const products = allProducts.filter(p => p.item_type === "product");
+  const stockValue = products.reduce((sum, p) => sum + (p.stock * p.cost_price), 0);
+  const totalPurchases = purchases.reduce((sum, p) => sum + Number(p.total_amount), 0);
+
+  const stats = [
+    { label: "Stock Value", value: formatCurrency(stockValue), icon: Package, color: "text-primary" },
+    { label: "Outstanding Dues", value: formatCurrency(summary?.totalDues || 0), icon: IndianRupee, color: "text-destructive" },
+    { label: "Total Purchases", value: formatCurrency(totalPurchases), icon: Truck, color: "text-secondary-foreground" },
+    { label: "Total Products", value: products.length.toString(), icon: ShoppingCart, color: "text-primary" },
+  ];
+
+  return (
+    <Card>
+      <CardHeader className="pb-2">
+        <CardTitle className="text-base flex items-center gap-2">
+          <Wallet className="h-4 w-4 text-primary" />
+          Quick Stats
+        </CardTitle>
+      </CardHeader>
+      <CardContent>
+        <div className="grid grid-cols-2 gap-3">
+          {stats.map((stat) => (
+            <div key={stat.label} className="p-3 rounded-lg bg-muted/50">
+              <div className="flex items-center gap-2 mb-1">
+                <stat.icon className={`h-4 w-4 ${stat.color}`} />
+                <span className="text-xs text-muted-foreground">{stat.label}</span>
+              </div>
+              <p className="text-lg font-bold">{stat.value}</p>
+            </div>
+          ))}
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
 function RecentActivityCard() {
   const { data: sales } = useSales();
   const { data: purchases } = usePurchases();
   
-  const recentSales = sales?.slice(0, 3) || [];
-  const recentPurchases = purchases?.slice(0, 3) || [];
+  const recentSales = sales?.slice(0, 4) || [];
+  const recentPurchases = purchases?.slice(0, 4) || [];
 
   return (
     <Card>
@@ -208,52 +253,65 @@ function RecentActivityCard() {
         <div className="grid gap-6 md:grid-cols-2">
           {/* Recent Sales */}
           <div>
-            <h3 className="font-semibold mb-3 flex items-center gap-2">
-              <ShoppingCart className="h-4 w-4 text-primary" />
-              Recent Sales
-            </h3>
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="font-semibold flex items-center gap-2">
+                <ShoppingCart className="h-4 w-4 text-primary" />
+                Recent Sales
+              </h3>
+              <Link to="/sales-history">
+                <Button variant="ghost" size="sm" className="h-7 text-xs">View All</Button>
+              </Link>
+            </div>
             {recentSales.length > 0 ? (
               <div className="space-y-2">
                 {recentSales.map(sale => (
                   <div key={sale.id} className="flex justify-between items-center text-sm p-2 rounded-lg bg-muted/50">
                     <div>
-                      <p className="font-medium text-primary">
-                        {sale.customer_name || `Invoice`}
+                      <p className="font-medium">
+                        {sale.customer_name || `Walk-in`}
                       </p>
                       <p className="text-xs text-muted-foreground">{formatDate(sale.invoice_date)}</p>
                     </div>
                     <div className="text-right">
                       <p className="font-semibold">{formatCurrency(sale.total_amount)}</p>
-                      <p className="text-xs text-muted-foreground">{sale.payment_mode}</p>
+                      <Badge variant="outline" className="text-xs">{sale.payment_mode}</Badge>
                     </div>
                   </div>
                 ))}
               </div>
             ) : (
-              <p className="text-sm text-muted-foreground">No recent sales</p>
+              <p className="text-sm text-muted-foreground py-4 text-center">No recent sales</p>
             )}
           </div>
           
           {/* Recent Purchases */}
           <div>
-            <h3 className="font-semibold mb-3 flex items-center gap-2">
-              <Truck className="h-4 w-4 text-accent" />
-              Recent Purchases
-            </h3>
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="font-semibold flex items-center gap-2">
+                <Truck className="h-4 w-4 text-secondary-foreground" />
+                Recent Purchases
+              </h3>
+              <Link to="/purchases">
+                <Button variant="ghost" size="sm" className="h-7 text-xs">View All</Button>
+              </Link>
+            </div>
             {recentPurchases.length > 0 ? (
               <div className="space-y-2">
                 {recentPurchases.map(purchase => (
                   <div key={purchase.id} className="flex justify-between items-center text-sm p-2 rounded-lg bg-muted/50">
                     <div>
-                      <p className="font-medium text-accent">{purchase.item_name}</p>
-                      <p className="text-xs text-muted-foreground">{formatDate(purchase.date)}</p>
+                      <p className="font-medium">{purchase.item_name}</p>
+                      <p className="text-xs text-muted-foreground">{purchase.supplier_name}</p>
                     </div>
-                    <p className="font-semibold">{formatCurrency(purchase.total_amount)}</p>
+                    <div className="text-right">
+                      <p className="font-semibold">{formatCurrency(purchase.total_amount)}</p>
+                      <p className="text-xs text-muted-foreground">{purchase.quantity} qty</p>
+                    </div>
                   </div>
                 ))}
               </div>
             ) : (
-              <p className="text-sm text-muted-foreground">No recent purchases</p>
+              <p className="text-sm text-muted-foreground py-4 text-center">No recent purchases</p>
             )}
           </div>
         </div>
@@ -265,31 +323,52 @@ function RecentActivityCard() {
 function LowStockCard() {
   const { data: lowStockProducts } = useLowStockProducts(10);
   
-  const recentAlerts = lowStockProducts?.slice(0, 5) || [];
+  const outOfStock = lowStockProducts?.filter(p => p.stock === 0) || [];
+  const lowStock = lowStockProducts?.filter(p => p.stock > 0) || [];
 
   return (
     <Card>
       <CardHeader className="pb-2">
-        <CardTitle className="text-base flex items-center gap-2">
-          <Package className="h-4 w-4 text-warning" />
-          Low Stock Alerts
-        </CardTitle>
+        <div className="flex items-center justify-between">
+          <CardTitle className="text-base flex items-center gap-2">
+            <AlertTriangle className="h-4 w-4 text-destructive" />
+            Stock Alerts
+          </CardTitle>
+          <Link to="/reports/stock">
+            <Button variant="ghost" size="sm" className="h-7 text-xs">View Report</Button>
+          </Link>
+        </div>
+        {(outOfStock.length > 0 || lowStock.length > 0) && (
+          <div className="flex gap-2 mt-1">
+            {outOfStock.length > 0 && (
+              <Badge variant="destructive" className="text-xs">{outOfStock.length} out of stock</Badge>
+            )}
+            {lowStock.length > 0 && (
+              <Badge variant="secondary" className="text-xs">{lowStock.length} low stock</Badge>
+            )}
+          </div>
+        )}
       </CardHeader>
       <CardContent>
-        {recentAlerts.length > 0 ? (
-          <div className="space-y-2">
-            {recentAlerts.map(product => (
-              <div key={product.id} className="flex justify-between items-center text-sm p-2 rounded-lg bg-warning/5 border border-warning/20">
+        {lowStockProducts && lowStockProducts.length > 0 ? (
+          <div className="space-y-2 max-h-[200px] overflow-auto">
+            {lowStockProducts.slice(0, 6).map(product => (
+              <div key={product.id} className="flex justify-between items-center text-sm p-2 rounded-lg border border-destructive/20 bg-destructive/5">
                 <div>
                   <p className="font-medium">{product.name}</p>
-                  <p className="text-xs text-muted-foreground">{product.category}</p>
+                  <p className="text-xs text-muted-foreground">{product.category || "Uncategorized"}</p>
                 </div>
-                <span className="text-warning font-bold">{product.stock} left</span>
+                <span className={`font-bold ${product.stock === 0 ? 'text-destructive' : 'text-secondary-foreground'}`}>
+                  {product.stock === 0 ? "Out!" : `${product.stock} left`}
+                </span>
               </div>
             ))}
           </div>
         ) : (
-          <p className="text-sm text-muted-foreground text-center py-4">All items well stocked! ✓</p>
+          <div className="text-center py-6">
+            <Package className="h-10 w-10 text-primary/50 mx-auto mb-2" />
+            <p className="text-sm text-muted-foreground">All items well stocked! ✓</p>
+          </div>
         )}
       </CardContent>
     </Card>
@@ -300,6 +379,8 @@ export default function Dashboard() {
   const { data: summary, isLoading: summaryLoading } = useSalesSummary();
   const { data: todaySales } = useTodaySales();
   
+  const totalTodaySales = todaySales?.reduce((sum, s) => sum + s.total_amount, 0) || 0;
+  const todayCollected = todaySales?.reduce((sum, s) => sum + s.paid_amount, 0) || 0;
   const cashSales = todaySales?.filter(s => s.payment_mode === "Cash").reduce((sum, s) => sum + s.paid_amount, 0) || 0;
   const upiSales = todaySales?.filter(s => s.payment_mode === "UPI").reduce((sum, s) => sum + s.paid_amount, 0) || 0;
   const cardSales = todaySales?.filter(s => s.payment_mode === "Card").reduce((sum, s) => sum + s.paid_amount, 0) || 0;
@@ -310,7 +391,7 @@ export default function Dashboard() {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold tracking-tight">Dashboard</h1>
-          <p className="text-muted-foreground">Welcome back — colorful view for quick action.</p>
+          <p className="text-muted-foreground">Real-time overview of your business</p>
         </div>
         <div className="flex gap-2">
           <Link to="/new-sale">
@@ -340,30 +421,30 @@ export default function Dashboard() {
         ) : (
           <>
             <GradientStatCard
-              title="Total Sales"
-              value={formatCurrency(summary?.totalSales || 0)}
-              subtitle="All time"
+              title="Today's Sales"
+              value={formatCurrency(totalTodaySales)}
+              subtitle={`${todaySales?.length || 0} invoices`}
               icon={TrendingUp}
               gradient="teal"
             />
             <GradientStatCard
-              title="Cash Sales"
+              title="Cash Collection"
               value={formatCurrency(cashSales)}
-              subtitle={`${((cashSales / (summary?.todayCollection || 1)) * 100).toFixed(0)}% of total`}
+              subtitle={todayCollected > 0 ? `${((cashSales / todayCollected) * 100).toFixed(0)}% of collected` : "Today"}
               icon={Banknote}
               gradient="blue"
             />
             <GradientStatCard
-              title="UPI Sales"
+              title="UPI Collection"
               value={formatCurrency(upiSales)}
-              subtitle="Fast digital payments"
+              subtitle={todayCollected > 0 ? `${((upiSales / todayCollected) * 100).toFixed(0)}% of collected` : "Today"}
               icon={Smartphone}
               gradient="purple"
             />
             <GradientStatCard
-              title="Card Sales"
+              title="Card Collection"
               value={formatCurrency(cardSales)}
-              subtitle="POS / Terminal"
+              subtitle={todayCollected > 0 ? `${((cardSales / todayCollected) * 100).toFixed(0)}% of collected` : "Today"}
               icon={CreditCard}
               gradient="pink"
             />
@@ -377,13 +458,16 @@ export default function Dashboard() {
         <SalesChartCard />
       </div>
       
-      {/* Recent Activity & Stock */}
+      {/* Quick Stats & Stock Alerts */}
       <div className="grid gap-4 lg:grid-cols-3">
+        <QuickStatsCard />
         <div className="lg:col-span-2">
-          <RecentActivityCard />
+          <LowStockCard />
         </div>
-        <LowStockCard />
       </div>
+      
+      {/* Recent Activity */}
+      <RecentActivityCard />
     </div>
   );
 }
