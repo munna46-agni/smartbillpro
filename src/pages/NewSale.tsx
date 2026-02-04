@@ -455,7 +455,7 @@ export default function NewSale() {
                       </Button>
                     </PopoverTrigger>
                     <PopoverContent className="w-80 p-0" align="end">
-                      <div className="p-2 border-b">
+                      <div className="p-2 border-b" onPointerDown={(e) => e.stopPropagation()}>
                         <Tabs value={itemTypeFilter} onValueChange={(v) => setItemTypeFilter(v as ItemType)}>
                           <TabsList className="grid w-full grid-cols-2">
                             <TabsTrigger value="product" className="text-xs gap-1">
