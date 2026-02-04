@@ -14,6 +14,45 @@ export type Database = {
   }
   public: {
     Tables: {
+      bank_accounts: {
+        Row: {
+          account_name: string
+          account_number: string | null
+          account_type: string
+          bank_name: string
+          created_at: string
+          current_balance: number
+          id: string
+          ifsc_code: string | null
+          updated_at: string
+          upi_id: string | null
+        }
+        Insert: {
+          account_name: string
+          account_number?: string | null
+          account_type?: string
+          bank_name: string
+          created_at?: string
+          current_balance?: number
+          id?: string
+          ifsc_code?: string | null
+          updated_at?: string
+          upi_id?: string | null
+        }
+        Update: {
+          account_name?: string
+          account_number?: string | null
+          account_type?: string
+          bank_name?: string
+          created_at?: string
+          current_balance?: number
+          id?: string
+          ifsc_code?: string | null
+          updated_at?: string
+          upi_id?: string | null
+        }
+        Relationships: []
+      }
       cash_closing: {
         Row: {
           created_at: string
