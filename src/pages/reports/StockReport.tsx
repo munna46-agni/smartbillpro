@@ -13,6 +13,9 @@ import {
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
+import { PieChart, Pie, Cell, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend } from "recharts";
+
+const COLORS = ['hsl(var(--primary))', 'hsl(var(--secondary))', 'hsl(var(--accent))', 'hsl(142, 76%, 36%)', 'hsl(280, 65%, 60%)', 'hsl(30, 80%, 55%)'];
 
 export default function StockReport() {
   const { data: allProducts = [], isLoading } = useProducts();
@@ -25,10 +28,11 @@ export default function StockReport() {
   const totalStock = products.reduce((sum, p) => sum + p.stock, 0);
   const stockValue = products.reduce((sum, p) => sum + (p.stock * p.cost_price), 0);
   const sellingValue = products.reduce((sum, p) => sum + (p.stock * p.selling_price), 0);
+  const potentialProfit = sellingValue - stockValue;
   const outOfStock = products.filter(p => p.stock === 0);
   const lowStock = products.filter(p => p.stock > 0 && p.stock < 10);
 
-  // Get stock by category
+  // Get stock by category for charts
   const stockByCategory = products.reduce((acc, p) => {
     const category = p.category || "Uncategorized";
     if (!acc[category]) {
@@ -39,6 +43,34 @@ export default function StockReport() {
     acc[category].value += p.stock * p.cost_price;
     return acc;
   }, {} as Record<string, { count: number; stock: number; value: number }>);
+
+  // Prepare pie chart data for category distribution
+  const categoryPieData = Object.entries(stockByCategory)
+    .map(([name, data]) => ({
+      name,
+      value: data.value,
+      stock: data.stock,
+      count: data.count,
+    }))
+    .sort((a, b) => b.value - a.value);
+
+  // Prepare bar chart data for top items by value
+  const topItemsByValue = [...products]
+    .map(p => ({
+      name: p.name.length > 15 ? p.name.substring(0, 15) + '...' : p.name,
+      fullName: p.name,
+      value: p.stock * p.cost_price,
+      stock: p.stock,
+    }))
+    .sort((a, b) => b.value - a.value)
+    .slice(0, 8);
+
+  // Stock status distribution for pie chart
+  const stockStatusData = [
+    { name: 'In Stock', value: products.filter(p => p.stock >= 10).length, color: 'hsl(var(--primary))' },
+    { name: 'Low Stock', value: lowStock.length, color: 'hsl(var(--secondary))' },
+    { name: 'Out of Stock', value: outOfStock.length, color: 'hsl(var(--destructive))' },
+  ].filter(d => d.value > 0);
 
   const getStockBadge = (stock: number) => {
     if (stock === 0) {
@@ -87,7 +119,7 @@ export default function StockReport() {
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-2xl font-bold tracking-tight">Stock Report</h1>
-          <p className="text-muted-foreground">Monitor inventory levels and stock movement</p>
+          <p className="text-muted-foreground">Monitor inventory levels and stock value</p>
         </div>
         <Button variant="outline" className="gap-2" onClick={handleExport}>
           <Download className="h-4 w-4" />
@@ -95,7 +127,8 @@ export default function StockReport() {
         </Button>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+      {/* Summary Cards */}
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
         <Card>
           <CardHeader className="pb-2">
             <CardDescription>Total Products</CardDescription>
@@ -107,7 +140,7 @@ export default function StockReport() {
         </Card>
         <Card>
           <CardHeader className="pb-2">
-            <CardDescription>Stock Value</CardDescription>
+            <CardDescription>Stock Value (Cost)</CardDescription>
             <CardTitle className="text-2xl">{formatCurrency(stockValue)}</CardTitle>
           </CardHeader>
           <CardContent>
@@ -116,9 +149,18 @@ export default function StockReport() {
         </Card>
         <Card>
           <CardHeader className="pb-2">
+            <CardDescription>Potential Revenue</CardDescription>
+            <CardTitle className="text-2xl">{formatCurrency(sellingValue)}</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-xs text-primary">+{formatCurrency(potentialProfit)} profit potential</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="pb-2">
             <CardDescription className="flex items-center gap-1">
               <AlertTriangle className="h-3 w-3 text-secondary-foreground" />
-              Low Stock Items
+              Low Stock
             </CardDescription>
             <CardTitle className="text-2xl text-secondary-foreground">{lowStock.length}</CardTitle>
           </CardHeader>
@@ -140,7 +182,157 @@ export default function StockReport() {
         </Card>
       </div>
 
-      {/* Stock by Category */}
+      {/* Charts Row */}
+      {products.length > 0 && (
+        <div className="grid gap-4 lg:grid-cols-2">
+          {/* Category Distribution Pie Chart */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">Stock Value by Category</CardTitle>
+              <CardDescription>Distribution of inventory value across categories</CardDescription>
+            </CardHeader>
+            <CardContent>
+              {categoryPieData.length > 0 ? (
+                <div className="h-64">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <PieChart>
+                      <Pie
+                        data={categoryPieData}
+                        cx="50%"
+                        cy="50%"
+                        innerRadius={60}
+                        outerRadius={90}
+                        paddingAngle={2}
+                        dataKey="value"
+                        label={({ name, percent }) => `${name} (${(percent * 100).toFixed(0)}%)`}
+                        labelLine={false}
+                      >
+                        {categoryPieData.map((_, index) => (
+                          <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                        ))}
+                      </Pie>
+                      <Tooltip
+                        contentStyle={{
+                          backgroundColor: 'hsl(var(--card))',
+                          border: '1px solid hsl(var(--border))',
+                          borderRadius: '8px',
+                        }}
+                        formatter={(value: number, name: string, props: any) => [
+                          formatCurrency(value),
+                          `${props.payload.count} items • ${props.payload.stock} units`
+                        ]}
+                      />
+                    </PieChart>
+                  </ResponsiveContainer>
+                </div>
+              ) : (
+                <div className="flex items-center justify-center h-64 text-muted-foreground">
+                  No category data available
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Stock Status Distribution */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">Stock Status Distribution</CardTitle>
+              <CardDescription>Overview of inventory health</CardDescription>
+            </CardHeader>
+            <CardContent>
+              {stockStatusData.length > 0 ? (
+                <div className="h-64">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <PieChart>
+                      <Pie
+                        data={stockStatusData}
+                        cx="50%"
+                        cy="50%"
+                        innerRadius={60}
+                        outerRadius={90}
+                        paddingAngle={2}
+                        dataKey="value"
+                        label={({ name, value }) => `${name}: ${value}`}
+                        labelLine={false}
+                      >
+                        {stockStatusData.map((entry, index) => (
+                          <Cell key={`cell-${index}`} fill={entry.color} />
+                        ))}
+                      </Pie>
+                      <Tooltip
+                        contentStyle={{
+                          backgroundColor: 'hsl(var(--card))',
+                          border: '1px solid hsl(var(--border))',
+                          borderRadius: '8px',
+                        }}
+                        formatter={(value: number) => [`${value} products`, 'Count']}
+                      />
+                    </PieChart>
+                  </ResponsiveContainer>
+                </div>
+              ) : (
+                <div className="flex items-center justify-center h-64 text-muted-foreground">
+                  No products available
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
+      {/* Top Items by Value Bar Chart */}
+      {topItemsByValue.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base flex items-center gap-2">
+              <TrendingUp className="h-4 w-4 text-primary" />
+              Top Items by Stock Value
+            </CardTitle>
+            <CardDescription>Highest value items in your inventory</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="h-72">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart
+                  data={topItemsByValue}
+                  layout="vertical"
+                  margin={{ top: 5, right: 30, left: 100, bottom: 5 }}
+                >
+                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                  <XAxis
+                    type="number"
+                    tick={{ fontSize: 11 }}
+                    stroke="hsl(var(--muted-foreground))"
+                    tickFormatter={(value) => `₹${(value / 1000).toFixed(0)}k`}
+                  />
+                  <YAxis
+                    type="category"
+                    dataKey="name"
+                    tick={{ fontSize: 11 }}
+                    stroke="hsl(var(--muted-foreground))"
+                    width={90}
+                  />
+                  <Tooltip
+                    contentStyle={{
+                      backgroundColor: 'hsl(var(--card))',
+                      border: '1px solid hsl(var(--border))',
+                      borderRadius: '8px',
+                    }}
+                    formatter={(value: number, name: string, props: any) => [
+                      formatCurrency(value),
+                      `${props.payload.stock} units`
+                    ]}
+                    labelFormatter={(label: string, payload: any) => payload?.[0]?.payload?.fullName || label}
+                  />
+                  <Bar dataKey="value" fill="hsl(var(--primary))" radius={[0, 4, 4, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Stock by Category Progress */}
       {Object.keys(stockByCategory).length > 0 && (
         <Card>
           <CardHeader>
