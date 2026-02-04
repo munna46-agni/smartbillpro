@@ -53,6 +53,47 @@ export type Database = {
         }
         Relationships: []
       }
+      bank_transactions: {
+        Row: {
+          amount: number
+          bank_account_id: string
+          created_at: string
+          description: string | null
+          id: string
+          reference_no: string | null
+          transaction_date: string
+          transaction_type: Database["public"]["Enums"]["transaction_type_enum"]
+        }
+        Insert: {
+          amount?: number
+          bank_account_id: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          reference_no?: string | null
+          transaction_date?: string
+          transaction_type: Database["public"]["Enums"]["transaction_type_enum"]
+        }
+        Update: {
+          amount?: number
+          bank_account_id?: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          reference_no?: string | null
+          transaction_date?: string
+          transaction_type?: Database["public"]["Enums"]["transaction_type_enum"]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bank_transactions_bank_account_id_fkey"
+            columns: ["bank_account_id"]
+            isOneToOne: false
+            referencedRelation: "bank_accounts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       cash_closing: {
         Row: {
           created_at: string
@@ -251,6 +292,7 @@ export type Database = {
     Enums: {
       bill_type_enum: "Invoice" | "Return"
       payment_mode_enum: "Cash" | "UPI" | "Card"
+      transaction_type_enum: "credit" | "debit"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -380,6 +422,7 @@ export const Constants = {
     Enums: {
       bill_type_enum: ["Invoice", "Return"],
       payment_mode_enum: ["Cash", "UPI", "Card"],
+      transaction_type_enum: ["credit", "debit"],
     },
   },
 } as const
