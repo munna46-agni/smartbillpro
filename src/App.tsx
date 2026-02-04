@@ -11,6 +11,12 @@ import Purchases from "@/pages/Purchases";
 import CashClosing from "@/pages/CashClosing";
 import SalesHistory from "@/pages/SalesHistory";
 import Settings from "@/pages/Settings";
+import Customers from "@/pages/Customers";
+import Suppliers from "@/pages/Suppliers";
+import BankUpi from "@/pages/BankUpi";
+import SalesReport from "@/pages/reports/SalesReport";
+import StockReport from "@/pages/reports/StockReport";
+import PurchaseReport from "@/pages/reports/PurchaseReport";
 import NotFound from "@/pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -29,6 +35,12 @@ const App = () => (
             <Route path="/purchases" element={<Purchases />} />
             <Route path="/cash-closing" element={<CashClosing />} />
             <Route path="/sales-history" element={<SalesHistory />} />
+            <Route path="/customers" element={<Customers />} />
+            <Route path="/suppliers" element={<Suppliers />} />
+            <Route path="/bank-upi" element={<BankUpi />} />
+            <Route path="/reports/sales" element={<SalesReport />} />
+            <Route path="/reports/stock" element={<StockReport />} />
+            <Route path="/reports/purchases" element={<PurchaseReport />} />
             <Route path="/settings" element={<Settings />} />
           </Route>
           <Route path="*" element={<NotFound />} />
