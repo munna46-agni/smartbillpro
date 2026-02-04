@@ -1,8 +1,10 @@
-import { Landmark, CreditCard, Smartphone, Trash2, Loader2 } from "lucide-react";
+import { Landmark, CreditCard, Smartphone, Trash2, Loader2, ArrowLeftRight } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { AddAccountDialog } from "@/components/bank/AddAccountDialog";
 import { EditAccountDialog } from "@/components/bank/EditAccountDialog";
+import { AddTransactionDialog } from "@/components/bank/AddTransactionDialog";
+import { TransactionsList } from "@/components/bank/TransactionsList";
 import { useBankAccounts } from "@/hooks/useBankAccounts";
 import { formatCurrency } from "@/lib/format";
 import {
@@ -66,7 +68,10 @@ export default function BankUpi() {
           <h1 className="text-2xl font-bold tracking-tight">Bank & UPI</h1>
           <p className="text-muted-foreground">Manage bank accounts and UPI transactions</p>
         </div>
-        <AddAccountDialog />
+        <div className="flex gap-2">
+          <AddTransactionDialog accounts={accounts} />
+          <AddAccountDialog />
+        </div>
       </div>
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
@@ -217,6 +222,21 @@ export default function BankUpi() {
               </Table>
             </div>
           )}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <ArrowLeftRight className="h-5 w-5 text-primary" />
+            Transaction History
+          </CardTitle>
+          <CardDescription>
+            Recent money in/out across all accounts
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <TransactionsList accounts={accounts} />
         </CardContent>
       </Card>
     </div>
