@@ -7,7 +7,7 @@ import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { useShopSettings } from "@/hooks/useShopSettings";
-import { Store, Printer, Database, Info, Upload, X, RotateCcw, Image, Type } from "lucide-react";
+import { Store, Printer, Database, Info, Upload, X, RotateCcw, Image, Type, User } from "lucide-react";
 import { toast } from "sonner";
 
 export default function Settings() {
@@ -125,6 +125,15 @@ export default function Settings() {
                   placeholder="Enter GST number"
                   value={settings.shopGST}
                   onChange={(e) => updateSettings({ shopGST: e.target.value })}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="proprietorName">Proprietor Name</Label>
+                <Input
+                  id="proprietorName"
+                  placeholder="Enter proprietor name"
+                  value={settings.proprietorName}
+                  onChange={(e) => updateSettings({ proprietorName: e.target.value })}
                 />
               </div>
               <div className="space-y-2 sm:col-span-2">
