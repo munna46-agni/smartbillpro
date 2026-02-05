@@ -7,13 +7,14 @@ import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { useShopSettings } from "@/hooks/useShopSettings";
-import { Store, Printer, Database, Info, Upload, X, RotateCcw, Image, Type, User } from "lucide-react";
+import { Store, Printer, Database, Info, Upload, X, RotateCcw, Image, Type, PenTool } from "lucide-react";
 import { toast } from "sonner";
 
 export default function Settings() {
   const { settings, updateSettings, resetSettings } = useShopSettings();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const watermarkInputRef = useRef<HTMLInputElement>(null);
+  const signatureInputRef = useRef<HTMLInputElement>(null);
   
   const handleLogoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -65,6 +66,30 @@ export default function Settings() {
       watermarkInputRef.current.value = "";
     }
     toast.success("Watermark image removed");
+  };
+
+  const handleSignatureUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      if (file.size > 500 * 1024) {
+        toast.error("Signature/Seal image must be smaller than 500KB");
+        return;
+      }
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        updateSettings({ signatureImageUrl: reader.result as string });
+        toast.success("Signature/Seal uploaded successfully");
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const removeSignature = () => {
+    updateSettings({ signatureImageUrl: null });
+    if (signatureInputRef.current) {
+      signatureInputRef.current.value = "";
+    }
+    toast.success("Signature/Seal removed");
   };
 
   const handleReset = () => {
@@ -306,6 +331,61 @@ export default function Settings() {
                 )}
               </div>
             )}
+          </CardContent>
+        </Card>
+
+        {/* Proprietor Signature/Seal */}
+        <Card className="md:col-span-2">
+          <CardHeader>
+            <CardTitle className="text-base flex items-center gap-2">
+              <PenTool className="h-5 w-5" />
+              Proprietor Signature / Seal
+            </CardTitle>
+            <CardDescription>Upload a signature or seal image for invoices</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="flex items-center gap-4">
+              {settings.signatureImageUrl ? (
+                <div className="relative">
+                  <img 
+                    src={settings.signatureImageUrl} 
+                    alt="Signature/Seal" 
+                    className="h-20 w-auto max-w-40 object-contain rounded-lg border bg-white p-2"
+                  />
+                  <Button
+                    variant="destructive"
+                    size="icon"
+                    className="absolute -top-2 -right-2 h-6 w-6 rounded-full"
+                    onClick={removeSignature}
+                  >
+                    <X className="h-3 w-3" />
+                  </Button>
+                </div>
+              ) : (
+                <div className="h-20 w-32 rounded-lg border-2 border-dashed border-muted-foreground/30 flex items-center justify-center">
+                  <PenTool className="h-8 w-8 text-muted-foreground/50" />
+                </div>
+              )}
+              <div className="space-y-2">
+                <input
+                  ref={signatureInputRef}
+                  type="file"
+                  accept="image/*"
+                  onChange={handleSignatureUpload}
+                  className="hidden"
+                />
+                <Button
+                  variant="outline"
+                  onClick={() => signatureInputRef.current?.click()}
+                >
+                  <Upload className="h-4 w-4 mr-2" />
+                  Upload Signature/Seal
+                </Button>
+                <p className="text-xs text-muted-foreground">
+                  Max 500KB. PNG with transparency recommended for best results.
+                </p>
+              </div>
+            </div>
           </CardContent>
         </Card>
         

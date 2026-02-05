@@ -248,6 +248,15 @@ function InvoicePreview({
                 
                 {/* Proprietor Signature Section */}
                 <div className="text-right">
+                  {shopSettings.signatureImageUrl && (
+                    <div className="mb-2 flex justify-end">
+                      <img 
+                        src={shopSettings.signatureImageUrl} 
+                        alt="Signature/Seal" 
+                        className="h-16 w-auto object-contain"
+                      />
+                    </div>
+                  )}
                   <div className="border-t border-gray-400 pt-2 min-w-[150px]">
                     <p className="text-sm font-medium">{shopSettings.proprietorName || 'Proprietor'}</p>
                     <p className="text-xs text-gray-500">Authorized Signatory</p>
