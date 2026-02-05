@@ -85,11 +85,21 @@ function InvoicePreview({
 
   return (
     <Dialog open onOpenChange={onClose}>
-      <DialogContent className="max-w-md print:shadow-none">
-        <DialogHeader>
-          <DialogTitle className="text-center">Invoice</DialogTitle>
+      <DialogContent className="max-w-[210mm] max-h-[90vh] overflow-y-auto print:max-w-none print:max-h-none print:overflow-visible print:shadow-none">
+        <DialogHeader className="print:hidden">
+          <DialogTitle className="text-center">Invoice Preview</DialogTitle>
         </DialogHeader>
-        <div className="space-y-4 text-sm relative">
+        
+        {/* A4 Invoice Container */}
+        <div 
+          className="bg-white text-black p-8 relative print:p-[15mm] print:m-0"
+          style={{ 
+            width: '210mm', 
+            minHeight: '297mm',
+            margin: '0 auto',
+            boxSizing: 'border-box'
+          }}
+        >
           {/* Watermark */}
           {shopSettings.showWatermark && (
             <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-0">
@@ -100,125 +110,162 @@ function InvoicePreview({
                   className="max-w-[60%] max-h-[60%] object-contain opacity-[0.08] rotate-[-15deg]"
                 />
               ) : shopSettings.watermarkText ? (
-                <span className="text-6xl font-bold text-foreground opacity-[0.06] rotate-[-30deg] whitespace-nowrap">
+                <span className="text-8xl font-bold text-gray-900 opacity-[0.06] rotate-[-30deg] whitespace-nowrap">
                   {shopSettings.watermarkText}
                 </span>
               ) : null}
             </div>
           )}
           
-          <div className="relative z-10">
+          <div className="relative z-10 flex flex-col min-h-[267mm]">
             {/* Header with Logo */}
-            <div className="text-center border-b pb-4">
+            <div className="text-center border-b-2 border-gray-300 pb-6">
               {shopSettings.logoUrl && (
-                <div className="flex justify-center mb-2">
+                <div className="flex justify-center mb-3">
                   <img 
                     src={shopSettings.logoUrl} 
                     alt="Shop Logo" 
-                    className="h-12 w-12 object-contain"
+                    className="h-16 w-16 object-contain"
                   />
                 </div>
               )}
-              <h2 className="text-xl font-bold">{shopSettings.shopName}</h2>
+              <h1 className="text-2xl font-bold text-gray-900">{shopSettings.shopName}</h1>
               {shopSettings.shopTagline && (
-                <p className="text-xs text-muted-foreground">{shopSettings.shopTagline}</p>
+                <p className="text-sm text-gray-600 mt-1">{shopSettings.shopTagline}</p>
               )}
               {shopSettings.shopAddress && (
-                <p className="text-xs text-muted-foreground mt-1">{shopSettings.shopAddress}</p>
+                <p className="text-sm text-gray-600 mt-2">{shopSettings.shopAddress}</p>
               )}
-              {shopSettings.shopPhone && (
-                <p className="text-xs text-muted-foreground">Ph: {shopSettings.shopPhone}</p>
-              )}
-              {shopSettings.shopGST && (
-                <p className="text-xs text-muted-foreground">GST: {shopSettings.shopGST}</p>
-              )}
+              <div className="flex justify-center gap-4 mt-2 text-sm text-gray-600">
+                {shopSettings.shopPhone && <span>Ph: {shopSettings.shopPhone}</span>}
+                {shopSettings.shopGST && <span>GST: {shopSettings.shopGST}</span>}
+              </div>
             </div>
             
-            <div className="flex justify-between text-xs text-muted-foreground py-2">
-              <span>{new Date().toLocaleString('en-IN')}</span>
+            {/* Invoice Title & Date */}
+            <div className="flex justify-between items-center py-4 border-b border-gray-200">
+              <h2 className="text-xl font-bold text-gray-800">TAX INVOICE</h2>
+              <div className="text-right text-sm text-gray-600">
+                <p>Date: {new Date().toLocaleDateString('en-IN')}</p>
+                <p>Time: {new Date().toLocaleTimeString('en-IN')}</p>
+              </div>
             </div>
             
+            {/* Customer Details */}
             {sale.customer_name && (
-              <div className="border-b pb-2">
-                <p><strong>Customer:</strong> {sale.customer_name}</p>
-                {sale.mobile_number && <p><strong>Mobile:</strong> {sale.mobile_number}</p>}
+              <div className="py-4 border-b border-gray-200">
+                <h3 className="text-sm font-semibold text-gray-700 mb-2">Bill To:</h3>
+                <p className="text-base font-medium">{sale.customer_name}</p>
+                {sale.mobile_number && <p className="text-sm text-gray-600">Mobile: {sale.mobile_number}</p>}
               </div>
             )}
             
-            <table className="w-full text-xs">
-              <thead>
-                <tr className="border-b">
-                  <th className="text-left py-2">Item</th>
-                  <th className="text-center py-2">Qty</th>
-                  <th className="text-right py-2">Rate</th>
-                  <th className="text-right py-2">Total</th>
-                </tr>
-              </thead>
-              <tbody>
-                {productItems.length > 0 && (
-                  <>
-                    <tr><td colSpan={4} className="py-1 text-xs font-semibold text-muted-foreground">Products</td></tr>
-                    {productItems.map((item) => (
-                      <tr key={item.id} className="border-b">
-                        <td className="py-2">{item.product_name}</td>
-                        <td className="text-center py-2">{item.quantity}</td>
-                        <td className="text-right py-2">{formatCurrency(item.rate)}</td>
-                        <td className="text-right py-2">{formatCurrency(item.total)}</td>
+            {/* Items Table */}
+            <div className="flex-1 py-4">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b-2 border-gray-300 bg-gray-50">
+                    <th className="text-left py-3 px-2 font-semibold">S.No</th>
+                    <th className="text-left py-3 px-2 font-semibold">Item Description</th>
+                    <th className="text-center py-3 px-2 font-semibold">Qty</th>
+                    <th className="text-right py-3 px-2 font-semibold">Rate</th>
+                    <th className="text-right py-3 px-2 font-semibold">Disc</th>
+                    <th className="text-right py-3 px-2 font-semibold">Amount</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {productItems.length > 0 && (
+                    <>
+                      <tr className="bg-gray-50">
+                        <td colSpan={6} className="py-2 px-2 text-xs font-semibold text-gray-600">Products</td>
                       </tr>
-                    ))}
-                  </>
-                )}
-                {serviceItems.length > 0 && (
-                  <>
-                    <tr><td colSpan={4} className="py-1 text-xs font-semibold text-muted-foreground">Services</td></tr>
-                    {serviceItems.map((item) => (
-                      <tr key={item.id} className="border-b">
-                        <td className="py-2">{item.product_name}</td>
-                        <td className="text-center py-2">{item.quantity}</td>
-                        <td className="text-right py-2">{formatCurrency(item.rate)}</td>
-                        <td className="text-right py-2">{formatCurrency(item.total)}</td>
+                      {productItems.map((item, index) => (
+                        <tr key={item.id} className="border-b border-gray-100">
+                          <td className="py-3 px-2">{index + 1}</td>
+                          <td className="py-3 px-2">{item.product_name}</td>
+                          <td className="text-center py-3 px-2">{item.quantity}</td>
+                          <td className="text-right py-3 px-2">{formatCurrency(item.rate)}</td>
+                          <td className="text-right py-3 px-2">{item.discount > 0 ? formatCurrency(item.discount) : '-'}</td>
+                          <td className="text-right py-3 px-2 font-medium">{formatCurrency(item.total)}</td>
+                        </tr>
+                      ))}
+                    </>
+                  )}
+                  {serviceItems.length > 0 && (
+                    <>
+                      <tr className="bg-gray-50">
+                        <td colSpan={6} className="py-2 px-2 text-xs font-semibold text-gray-600">Services</td>
                       </tr>
-                    ))}
-                  </>
-                )}
-              </tbody>
-            </table>
+                      {serviceItems.map((item, index) => (
+                        <tr key={item.id} className="border-b border-gray-100">
+                          <td className="py-3 px-2">{productItems.length + index + 1}</td>
+                          <td className="py-3 px-2">{item.product_name}</td>
+                          <td className="text-center py-3 px-2">{item.quantity}</td>
+                          <td className="text-right py-3 px-2">{formatCurrency(item.rate)}</td>
+                          <td className="text-right py-3 px-2">{item.discount > 0 ? formatCurrency(item.discount) : '-'}</td>
+                          <td className="text-right py-3 px-2 font-medium">{formatCurrency(item.total)}</td>
+                        </tr>
+                      ))}
+                    </>
+                  )}
+                </tbody>
+              </table>
+            </div>
             
-            <div className="space-y-1 border-t pt-2">
-              <div className="flex justify-between">
-                <span>Grand Total:</span>
-                <span className="font-bold">{formatCurrency(sale.total_amount)}</span>
-              </div>
-              <div className="flex justify-between">
-                <span>Paid Amount:</span>
-                <span className="text-success">{formatCurrency(sale.paid_amount)}</span>
-              </div>
-              {sale.balance_amount > 0 && (
-                <div className="flex justify-between text-danger font-medium">
-                  <span>Balance Due:</span>
-                  <span>{formatCurrency(sale.balance_amount)}</span>
+            {/* Totals Section */}
+            <div className="border-t-2 border-gray-300 pt-4">
+              <div className="flex justify-end">
+                <div className="w-64 space-y-2">
+                  <div className="flex justify-between text-base">
+                    <span className="font-medium">Grand Total:</span>
+                    <span className="font-bold text-lg">{formatCurrency(sale.total_amount)}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>Paid Amount:</span>
+                    <span className="text-green-600 font-medium">{formatCurrency(sale.paid_amount)}</span>
+                  </div>
+                  {sale.balance_amount > 0 && (
+                    <div className="flex justify-between text-red-600 font-medium">
+                      <span>Balance Due:</span>
+                      <span>{formatCurrency(sale.balance_amount)}</span>
+                    </div>
+                  )}
+                  <div className="flex justify-between text-sm text-gray-600 pt-2 border-t border-gray-200">
+                    <span>Payment Mode:</span>
+                    <span>{sale.payment_mode}</span>
+                  </div>
                 </div>
-              )}
-              <div className="flex justify-between text-xs text-muted-foreground">
-                <span>Payment Mode:</span>
-                <span>{sale.payment_mode}</span>
               </div>
             </div>
             
-            <div className="text-center text-xs text-muted-foreground pt-4 border-t">
-              <p>Thank you for your visit!</p>
+            {/* Footer with Thank You and Signature */}
+            <div className="mt-8 pt-6 border-t border-gray-200">
+              <div className="flex justify-between items-end">
+                {/* Thank you message */}
+                <div className="text-center">
+                  <p className="text-sm text-gray-600">Thank you for your business!</p>
+                </div>
+                
+                {/* Proprietor Signature Section */}
+                <div className="text-right">
+                  <div className="border-t border-gray-400 pt-2 min-w-[150px]">
+                    <p className="text-sm font-medium">{shopSettings.proprietorName || 'Proprietor'}</p>
+                    <p className="text-xs text-gray-500">Authorized Signatory</p>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
-          
-          <div className="flex gap-2 print:hidden">
-            <Button variant="outline" onClick={onClose} className="flex-1">
-              Close
-            </Button>
-            <Button onClick={handlePrint} className="flex-1">
-              <Printer className="h-4 w-4 mr-2" />
-              Print
-            </Button>
-          </div>
+        </div>
+        
+        <div className="flex gap-2 print:hidden mt-4">
+          <Button variant="outline" onClick={onClose} className="flex-1">
+            Close
+          </Button>
+          <Button onClick={handlePrint} className="flex-1">
+            <Printer className="h-4 w-4 mr-2" />
+            Print
+          </Button>
         </div>
       </DialogContent>
     </Dialog>
