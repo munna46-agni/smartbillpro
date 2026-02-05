@@ -12,6 +12,7 @@ export interface ShopSettings {
   watermarkType: "text" | "image";
   showWatermark: boolean;
   proprietorName: string;
+  signatureImageUrl: string | null;
 }
 
 const DEFAULT_SETTINGS: ShopSettings = {
@@ -26,6 +27,7 @@ const DEFAULT_SETTINGS: ShopSettings = {
   watermarkType: "text",
   showWatermark: true,
   proprietorName: "",
+  signatureImageUrl: null,
 };
 
 const STORAGE_KEY = "shop-settings";
