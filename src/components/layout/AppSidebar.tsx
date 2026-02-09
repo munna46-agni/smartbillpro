@@ -16,8 +16,10 @@ import {
   ClipboardList,
   Boxes,
   Receipt,
-  CreditCard
+  CreditCard,
+  LogOut
 } from "lucide-react";
+import { useAuth } from "@/hooks/useAuth";
 import { NavLink as RouterNavLink, useLocation } from "react-router-dom";
 import {
   Sidebar,
@@ -97,6 +99,7 @@ const bottomItems: MenuItem[] = [
 
 export function AppSidebar() {
   const location = useLocation();
+  const { signOut } = useAuth();
   
   // Determine which groups should be open based on current route
   const getInitialOpenGroups = () => {
@@ -224,9 +227,13 @@ export function AppSidebar() {
       </SidebarContent>
       
       <SidebarFooter className="border-t border-sidebar-border px-5 py-3">
-        <p className="text-[10px] text-sidebar-foreground/40">
-          © 2024 SmartBill POS
-        </p>
+        <button
+          onClick={() => signOut()}
+          className="flex items-center gap-2 text-xs text-sidebar-foreground/60 hover:text-destructive transition-colors w-full"
+        >
+          <LogOut className="h-3.5 w-3.5" />
+          Sign Out
+        </button>
       </SidebarFooter>
     </Sidebar>
   );
