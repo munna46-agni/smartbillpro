@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { getShopId } from "@/lib/shopId";
 import { useToast } from "@/hooks/use-toast";
 
 export interface BankAccount {
@@ -44,9 +45,10 @@ export function useBankAccounts() {
 
   const addAccount = useMutation({
     mutationFn: async (account: BankAccountInsert) => {
+      const shop_id = await getShopId();
       const { data, error } = await supabase
         .from("bank_accounts")
-        .insert(account)
+        .insert({ ...account, shop_id })
         .select()
         .single();
       

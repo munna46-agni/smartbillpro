@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { getShopId } from "@/lib/shopId";
 import { toast } from "sonner";
 
 export interface Sale {
@@ -150,10 +151,11 @@ export function useCreateSale() {
   
   return useMutation({
     mutationFn: async ({ sale, items }: CreateSaleInput) => {
+      const shop_id = await getShopId();
       // Create sale
       const { data: saleData, error: saleError } = await supabase
         .from("sales")
-        .insert(sale)
+        .insert({ ...sale, shop_id })
         .select()
         .single();
       
@@ -163,6 +165,7 @@ export function useCreateSale() {
       const saleItems = items.map(item => ({
         ...item,
         sale_id: saleData.id,
+        shop_id,
       }));
       
       const { error: itemsError } = await supabase

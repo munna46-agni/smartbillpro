@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { getShopId } from "@/lib/shopId";
 import { toast } from "sonner";
 
 export interface Purchase {
@@ -34,10 +35,11 @@ export function useAddPurchase() {
   
   return useMutation({
     mutationFn: async (purchase: Omit<Purchase, "id" | "created_at">) => {
+      const shop_id = await getShopId();
       // Add purchase record
       const { data, error } = await supabase
         .from("purchases")
-        .insert(purchase)
+        .insert({ ...purchase, shop_id })
         .select()
         .single();
       
