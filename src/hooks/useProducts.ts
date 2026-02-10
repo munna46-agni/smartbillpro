@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { getShopId } from "@/lib/shopId";
 import { toast } from "sonner";
 
 export type ItemType = "product" | "service";
@@ -60,9 +61,10 @@ export function useAddProduct() {
         ? { ...product, stock: 0 } 
         : product;
         
+      const shop_id = await getShopId();
       const { data, error } = await supabase
         .from("products")
-        .insert(productData)
+        .insert({ ...productData, shop_id })
         .select()
         .single();
       

@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { getShopId } from "@/lib/shopId";
 import { toast } from "sonner";
 
 export interface CashClosing {
@@ -51,9 +52,10 @@ export function useAddCashClosing() {
   
   return useMutation({
     mutationFn: async (closing: Omit<CashClosing, "id" | "created_at">) => {
+      const shop_id = await getShopId();
       const { data, error } = await supabase
         .from("cash_closing")
-        .insert(closing)
+        .insert({ ...closing, shop_id })
         .select()
         .single();
       
