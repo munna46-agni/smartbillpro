@@ -28,7 +28,7 @@ interface Shop {
 }
 
 export default function AdminDashboard() {
-  const { signOut, session } = useAuth();
+  const { signOut } = useAuth();
   const queryClient = useQueryClient();
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [shopName, setShopName] = useState("");
@@ -48,12 +48,11 @@ export default function AdminDashboard() {
   const { data: shops = [], isLoading: loadingShops } = useQuery({
     queryKey: ["admin", "shops"],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("shops")
-        .select("*")
-        .order("created_at", { ascending: false });
-      if (error) throw error;
-      return data as Shop[];
+      const response = await supabase.functions.invoke("admin-manage-shops", {
+        body: { action: "list_shops" },
+      });
+      if (response.error) throw new Error(response.error.message);
+      return (response.data?.shops ?? []) as Shop[];
     },
   });
 
@@ -80,11 +79,11 @@ export default function AdminDashboard() {
 
   const toggleShopMutation = useMutation({
     mutationFn: async ({ shopId, isActive }: { shopId: string; isActive: boolean }) => {
-      const { error } = await supabase
-        .from("shops")
-        .update({ is_active: isActive })
-        .eq("id", shopId);
-      if (error) throw error;
+      const response = await supabase.functions.invoke("admin-manage-shops", {
+        body: { action: "toggle_shop", shop_id: shopId, is_active: isActive },
+      });
+      if (response.error) throw new Error(response.error.message);
+      if (response.data?.error) throw new Error(response.data.error);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["admin"] });
@@ -201,7 +200,7 @@ export default function AdminDashboard() {
                   </div>
                   <div className="space-y-2">
                     <Label>Shop Name</Label>
-                    <Input value={shopName} onChange={(e) => setShopName(e.target.value)} placeholder="My Shop" />
+                    <Input value={shopName} onChange={(e) => setShopName(e.target.value)} placeholder="My Shop" maxLength={200} />
                   </div>
                   <Button
                     className="w-full"
