@@ -1,13 +1,37 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-};
+const ALLOWED_ORIGINS = [
+  "https://id-preview--43908eed-179a-4b49-9fbc-368d6ddd42b2.lovable.app",
+  "http://localhost:5173",
+  "http://localhost:8080",
+];
+
+function getCorsHeaders(req: Request) {
+  const origin = req.headers.get("Origin") ?? "";
+  const allowedOrigin = ALLOWED_ORIGINS.includes(origin) ? origin : ALLOWED_ORIGINS[0];
+  return {
+    "Access-Control-Allow-Origin": allowedOrigin,
+    "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
+  };
+}
+
+const ALLOWED_ACTIONS = ["list_pending_users", "create_shop", "list_shops", "toggle_shop"];
+
+function validateEmail(email: string): boolean {
+  return /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email) && email.length <= 255;
+}
+
+function validateShopName(name: string): string | null {
+  const trimmed = name.trim();
+  if (trimmed.length < 1 || trimmed.length > 200) return null;
+  return trimmed;
+}
 
 Deno.serve(async (req) => {
+  const corsHeaders = getCorsHeaders(req);
+
   if (req.method === "OPTIONS") {
-    return new Response("ok", { headers: corsHeaders });
+    return new Response(null, { headers: corsHeaders });
   }
 
   try {
@@ -15,7 +39,7 @@ Deno.serve(async (req) => {
     const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, serviceRoleKey);
 
-    // Verify caller is super_admin
+    // Verify caller is authenticated
     const authHeader = req.headers.get("Authorization");
     if (!authHeader) {
       return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } });
@@ -39,14 +63,18 @@ Deno.serve(async (req) => {
       return new Response(JSON.stringify({ error: "Forbidden" }), { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
-    const { action, ...params } = await req.json();
+    const body = await req.json();
+    const { action, ...params } = body;
+
+    // Validate action
+    if (!action || !ALLOWED_ACTIONS.includes(action)) {
+      return new Response(JSON.stringify({ error: "Invalid action" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
 
     if (action === "list_pending_users") {
-      // Get all users who don't own a shop
       const { data: allUsers } = await supabase.auth.admin.listUsers();
       const { data: shops } = await supabase.from("shops").select("owner_id");
       const shopOwnerIds = new Set((shops ?? []).map((s: any) => s.owner_id));
-      // Also exclude super admins
       const { data: admins } = await supabase.from("user_roles").select("user_id").eq("role", "super_admin");
       const adminIds = new Set((admins ?? []).map((a: any) => a.user_id));
 
@@ -57,10 +85,54 @@ Deno.serve(async (req) => {
       return new Response(JSON.stringify({ users: pendingUsers }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
+    if (action === "list_shops") {
+      const { data: shops, error: shopsError } = await supabase
+        .from("shops")
+        .select("*")
+        .order("created_at", { ascending: false });
+
+      if (shopsError) {
+        console.error("Failed to list shops:", shopsError.message);
+        return new Response(JSON.stringify({ error: "Unable to retrieve shops" }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      }
+
+      return new Response(JSON.stringify({ shops: shops ?? [] }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+
+    if (action === "toggle_shop") {
+      const { shop_id, is_active } = params;
+      if (!shop_id || typeof is_active !== "boolean") {
+        return new Response(JSON.stringify({ error: "shop_id and is_active are required" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      }
+
+      const { error: updateError } = await supabase
+        .from("shops")
+        .update({ is_active })
+        .eq("id", shop_id);
+
+      if (updateError) {
+        console.error("Failed to toggle shop:", updateError.message);
+        return new Response(JSON.stringify({ error: "Unable to update shop status" }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      }
+
+      return new Response(JSON.stringify({ success: true }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+
     if (action === "create_shop") {
       const { shop_name, owner_email } = params;
+
+      // Validate inputs
       if (!shop_name || !owner_email) {
         return new Response(JSON.stringify({ error: "shop_name and owner_email are required" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      }
+
+      const sanitizedName = validateShopName(shop_name);
+      if (!sanitizedName) {
+        return new Response(JSON.stringify({ error: "Shop name must be 1-200 characters" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      }
+
+      if (!validateEmail(owner_email)) {
+        return new Response(JSON.stringify({ error: "Invalid email format" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
       }
 
       // Find user by email
@@ -79,11 +151,14 @@ Deno.serve(async (req) => {
       // Create shop
       const { data: shop, error: shopError } = await supabase
         .from("shops")
-        .insert({ name: shop_name, owner_id: targetUser.id, is_active: true })
+        .insert({ name: sanitizedName, owner_id: targetUser.id, is_active: true })
         .select()
         .single();
 
-      if (shopError) throw shopError;
+      if (shopError) {
+        console.error("Failed to create shop:", shopError.message);
+        return new Response(JSON.stringify({ error: "Unable to create shop" }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      }
 
       // Assign shop_owner role
       await supabase
@@ -94,8 +169,9 @@ Deno.serve(async (req) => {
       return new Response(JSON.stringify({ shop }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
-    return new Response(JSON.stringify({ error: "Unknown action" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    return new Response(JSON.stringify({ error: "Invalid action" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
   } catch (error) {
-    return new Response(JSON.stringify({ error: error.message }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    console.error("Admin function error:", error.message);
+    return new Response(JSON.stringify({ error: "An unexpected error occurred" }), { status: 500, headers: { ...getCorsHeaders(req), "Content-Type": "application/json" } });
   }
 });
