@@ -1,14 +1,18 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
-const ALLOWED_ORIGINS = [
-  "https://id-preview--43908eed-179a-4b49-9fbc-368d6ddd42b2.lovable.app",
-  "http://localhost:5173",
-  "http://localhost:8080",
-];
+function isAllowedOrigin(origin: string): boolean {
+  if (!origin) return false;
+  // Allow Lovable preview/published domains
+  if (origin.endsWith(".lovable.app")) return true;
+  if (origin.endsWith(".lovableproject.com")) return true;
+  // Allow local development
+  if (origin.startsWith("http://localhost:")) return true;
+  return false;
+}
 
 function getCorsHeaders(req: Request) {
   const origin = req.headers.get("Origin") ?? "";
-  const allowedOrigin = ALLOWED_ORIGINS.includes(origin) ? origin : ALLOWED_ORIGINS[0];
+  const allowedOrigin = isAllowedOrigin(origin) ? origin : "";
   return {
     "Access-Control-Allow-Origin": allowedOrigin,
     "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
