@@ -25,8 +25,11 @@ export interface SaleItem {
   rate: number;
   discount: number;
   total: number;
-  item_type: "product" | "service";
+  item_type: string;
   created_at: string;
+  validity_days?: number | null;
+  expiry_date?: string | null;
+  policy_number?: string | null;
 }
 
 export interface SaleWithItems extends Sale {
@@ -163,9 +166,17 @@ export function useCreateSale() {
       
       // Create sale items
       const saleItems = items.map(item => ({
-        ...item,
+        product_name: item.product_name,
+        quantity: item.quantity,
+        rate: item.rate,
+        discount: item.discount,
+        total: item.total,
+        item_type: item.item_type,
         sale_id: saleData.id,
         shop_id,
+        validity_days: item.validity_days || null,
+        expiry_date: item.expiry_date || null,
+        policy_number: item.policy_number || null,
       }));
       
       const { error: itemsError } = await supabase
@@ -176,7 +187,7 @@ export function useCreateSale() {
       
       // Update stock for each item (only for products, not services)
       for (const item of items) {
-        if (item.item_type === "service") continue; // Services don't have stock
+        if (item.item_type !== "product") continue; // Only products have stock
         
         const { data: product, error: productError } = await supabase
           .from("products")

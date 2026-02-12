@@ -304,38 +304,47 @@ export type Database = {
         Row: {
           created_at: string
           discount: number
+          expiry_date: string | null
           id: string
           item_type: string
+          policy_number: string | null
           product_name: string
           quantity: number
           rate: number
           sale_id: string
           shop_id: string | null
           total: number
+          validity_days: number | null
         }
         Insert: {
           created_at?: string
           discount?: number
+          expiry_date?: string | null
           id?: string
           item_type?: string
+          policy_number?: string | null
           product_name: string
           quantity?: number
           rate?: number
           sale_id: string
           shop_id?: string | null
           total?: number
+          validity_days?: number | null
         }
         Update: {
           created_at?: string
           discount?: number
+          expiry_date?: string | null
           id?: string
           item_type?: string
+          policy_number?: string | null
           product_name?: string
           quantity?: number
           rate?: number
           sale_id?: string
           shop_id?: string | null
           total?: number
+          validity_days?: number | null
         }
         Relationships: [
           {

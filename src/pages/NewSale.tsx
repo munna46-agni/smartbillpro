@@ -42,7 +42,10 @@ import {
   Save,
   Package,
   Wrench,
-  Store
+  Store,
+  Smartphone,
+  Shield,
+  Calendar
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -53,6 +56,8 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 
+type BillingMode = "product" | "recharge" | "insurance";
+
 interface CartItem {
   id: string;
   product_name: string;
@@ -61,7 +66,10 @@ interface CartItem {
   discount: number;
   total: number;
   available_stock: number;
-  item_type: "product" | "service";
+  item_type: "product" | "service" | "recharge" | "insurance";
+  validity_days?: number | null;
+  expiry_date?: string | null;
+  policy_number?: string | null;
 }
 
 function InvoicePreview({ 
@@ -295,6 +303,19 @@ export default function NewSale() {
   const [productOpen, setProductOpen] = useState(false);
   const [showInvoice, setShowInvoice] = useState(false);
   const [lastSale, setLastSale] = useState<any>(null);
+  const [billingMode, setBillingMode] = useState<BillingMode>("product");
+  
+  // Recharge state
+  const [rechargePlan, setRechargePlan] = useState("");
+  const [rechargeAmount, setRechargeAmount] = useState("");
+  const [validityOption, setValidityOption] = useState("28");
+  const [customDays, setCustomDays] = useState("");
+  
+  // Insurance state
+  const [insuranceName, setInsuranceName] = useState("");
+  const [insuranceAmount, setInsuranceAmount] = useState("");
+  const [policyNumber, setPolicyNumber] = useState("");
+  const [insuranceExpiryDate, setInsuranceExpiryDate] = useState("");
   
   const { data: previousDue } = useCustomerDue(mobileNumber.length >= 10 ? mobileNumber : null);
   
@@ -395,6 +416,73 @@ export default function NewSale() {
   const removeFromCart = (id: string) => {
     setCart(cart.filter(item => item.id !== id));
   };
+
+  const addRechargeToCart = () => {
+    if (!rechargePlan || !rechargeAmount) {
+      toast.error("Please enter plan name and amount");
+      return;
+    }
+    const amount = parseFloat(rechargeAmount);
+    if (isNaN(amount) || amount <= 0) {
+      toast.error("Please enter a valid amount");
+      return;
+    }
+    const days = validityOption === "custom" 
+      ? parseInt(customDays) || 28 
+      : parseInt(validityOption);
+    const expiryDate = new Date();
+    expiryDate.setDate(expiryDate.getDate() + days);
+
+    setCart([...cart, {
+      id: crypto.randomUUID(),
+      product_name: `Recharge - ${rechargePlan}`,
+      quantity: 1,
+      rate: amount,
+      discount: 0,
+      total: amount,
+      available_stock: Infinity,
+      item_type: "recharge",
+      validity_days: days,
+      expiry_date: expiryDate.toISOString().split("T")[0],
+    }]);
+    setRechargePlan("");
+    setRechargeAmount("");
+    setValidityOption("28");
+    setCustomDays("");
+  };
+
+  const addInsuranceToCart = () => {
+    if (!insuranceName || !insuranceAmount || !insuranceExpiryDate) {
+      toast.error("Please enter all insurance details");
+      return;
+    }
+    const amount = parseFloat(insuranceAmount);
+    if (isNaN(amount) || amount <= 0) {
+      toast.error("Please enter a valid amount");
+      return;
+    }
+    const today = new Date();
+    const expiry = new Date(insuranceExpiryDate);
+    const diffDays = Math.ceil((expiry.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+
+    setCart([...cart, {
+      id: crypto.randomUUID(),
+      product_name: `Insurance - ${insuranceName}`,
+      quantity: 1,
+      rate: amount,
+      discount: 0,
+      total: amount,
+      available_stock: Infinity,
+      item_type: "insurance",
+      validity_days: diffDays > 0 ? diffDays : null,
+      expiry_date: insuranceExpiryDate,
+      policy_number: policyNumber || null,
+    }]);
+    setInsuranceName("");
+    setInsuranceAmount("");
+    setPolicyNumber("");
+    setInsuranceExpiryDate("");
+  };
   
   const handleSave = async () => {
     if (cart.length === 0) {
@@ -423,6 +511,9 @@ export default function NewSale() {
       discount: item.discount,
       total: item.total,
       item_type: item.item_type,
+      validity_days: item.validity_days || null,
+      expiry_date: item.expiry_date || null,
+      policy_number: item.policy_number || null,
     }));
     
     try {
@@ -443,6 +534,8 @@ export default function NewSale() {
 
   const productCount = cart.filter(i => i.item_type === "product").length;
   const serviceCount = cart.filter(i => i.item_type === "service").length;
+  const rechargeCount = cart.filter(i => i.item_type === "recharge").length;
+  const insuranceCount = cart.filter(i => i.item_type === "insurance").length;
 
   return (
     <div className="space-y-4 animate-fade-in">
@@ -492,6 +585,137 @@ export default function NewSale() {
                     <p className="font-medium">Previous Due Amount</p>
                     <p className="text-lg font-bold">{formatCurrency(previousDue)}</p>
                   </div>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Billing Mode Selector */}
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base">Billing Type</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <Tabs value={billingMode} onValueChange={(v) => setBillingMode(v as BillingMode)}>
+                <TabsList className="grid w-full grid-cols-3">
+                  <TabsTrigger value="product" className="text-xs gap-1">
+                    <Package className="h-3 w-3" />
+                    Product / Service
+                  </TabsTrigger>
+                  <TabsTrigger value="recharge" className="text-xs gap-1">
+                    <Smartphone className="h-3 w-3" />
+                    Recharge
+                  </TabsTrigger>
+                  <TabsTrigger value="insurance" className="text-xs gap-1">
+                    <Shield className="h-3 w-3" />
+                    Insurance
+                  </TabsTrigger>
+                </TabsList>
+              </Tabs>
+
+              {/* Recharge Form */}
+              {billingMode === "recharge" && (
+                <div className="mt-4 space-y-4 p-4 rounded-lg border bg-muted/30">
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    <div className="space-y-2">
+                      <Label>Plan / Operator Name</Label>
+                      <Input
+                        placeholder="e.g. Jio 299, Airtel 239"
+                        value={rechargePlan}
+                        onChange={(e) => setRechargePlan(e.target.value)}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Amount (₹)</Label>
+                      <Input
+                        type="number"
+                        placeholder="0.00"
+                        value={rechargeAmount}
+                        onChange={(e) => setRechargeAmount(e.target.value)}
+                      />
+                    </div>
+                  </div>
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    <div className="space-y-2">
+                      <Label>Validity</Label>
+                      <Select value={validityOption} onValueChange={setValidityOption}>
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="28">28 Days</SelectItem>
+                          <SelectItem value="56">56 Days</SelectItem>
+                          <SelectItem value="84">84 Days</SelectItem>
+                          <SelectItem value="30">1 Month (30 Days)</SelectItem>
+                          <SelectItem value="365">1 Year (365 Days)</SelectItem>
+                          <SelectItem value="custom">Custom / Manual</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    {validityOption === "custom" && (
+                      <div className="space-y-2">
+                        <Label>Custom Days</Label>
+                        <Input
+                          type="number"
+                          placeholder="Enter days"
+                          value={customDays}
+                          onChange={(e) => setCustomDays(e.target.value)}
+                        />
+                      </div>
+                    )}
+                  </div>
+                  <Button onClick={addRechargeToCart} className="w-full">
+                    <Plus className="h-4 w-4 mr-2" />
+                    Add Recharge to Bill
+                  </Button>
+                </div>
+              )}
+
+              {/* Insurance Form */}
+              {billingMode === "insurance" && (
+                <div className="mt-4 space-y-4 p-4 rounded-lg border bg-muted/30">
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    <div className="space-y-2">
+                      <Label>Insurance / Policy Name</Label>
+                      <Input
+                        placeholder="e.g. Health Insurance, Vehicle Insurance"
+                        value={insuranceName}
+                        onChange={(e) => setInsuranceName(e.target.value)}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Amount (₹)</Label>
+                      <Input
+                        type="number"
+                        placeholder="0.00"
+                        value={insuranceAmount}
+                        onChange={(e) => setInsuranceAmount(e.target.value)}
+                      />
+                    </div>
+                  </div>
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    <div className="space-y-2">
+                      <Label>Policy Number (Optional)</Label>
+                      <Input
+                        placeholder="Policy number"
+                        value={policyNumber}
+                        onChange={(e) => setPolicyNumber(e.target.value)}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Expiry Date</Label>
+                      <Input
+                        type="date"
+                        value={insuranceExpiryDate}
+                        onChange={(e) => setInsuranceExpiryDate(e.target.value)}
+                        min={new Date().toISOString().split("T")[0]}
+                      />
+                    </div>
+                  </div>
+                  <Button onClick={addInsuranceToCart} className="w-full">
+                    <Plus className="h-4 w-4 mr-2" />
+                    Add Insurance to Bill
+                  </Button>
                 </div>
               )}
             </CardContent>
@@ -692,6 +916,69 @@ export default function NewSale() {
                         {formatCurrency(item.total)}
                       </div>
                       
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 text-danger hover:text-danger hover:bg-danger/10"
+                        onClick={() => removeFromCart(item.id)}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  ))}
+
+                  {/* Recharge Items */}
+                  {rechargeCount > 0 && (
+                    <p className="text-xs font-semibold text-muted-foreground flex items-center gap-1 mt-4">
+                      <Smartphone className="h-3 w-3" /> Recharges ({rechargeCount})
+                    </p>
+                  )}
+                  {cart.filter(i => i.item_type === "recharge").map((item) => (
+                    <div 
+                      key={item.id}
+                      className="flex items-center gap-3 rounded-lg border border-primary/30 bg-primary/5 p-3"
+                    >
+                      <div className="flex-1 min-w-0">
+                        <p className="font-medium truncate">{item.product_name}</p>
+                        <p className="text-xs text-muted-foreground">
+                          Validity: {item.validity_days} days • Expires: {item.expiry_date}
+                        </p>
+                      </div>
+                      <div className="w-24 text-right font-semibold">
+                        {formatCurrency(item.total)}
+                      </div>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 text-danger hover:text-danger hover:bg-danger/10"
+                        onClick={() => removeFromCart(item.id)}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  ))}
+
+                  {/* Insurance Items */}
+                  {insuranceCount > 0 && (
+                    <p className="text-xs font-semibold text-muted-foreground flex items-center gap-1 mt-4">
+                      <Shield className="h-3 w-3" /> Insurance ({insuranceCount})
+                    </p>
+                  )}
+                  {cart.filter(i => i.item_type === "insurance").map((item) => (
+                    <div 
+                      key={item.id}
+                      className="flex items-center gap-3 rounded-lg border border-accent/30 bg-accent/5 p-3"
+                    >
+                      <div className="flex-1 min-w-0">
+                        <p className="font-medium truncate">{item.product_name}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {item.policy_number && `Policy: ${item.policy_number} • `}
+                          Expires: {item.expiry_date}
+                        </p>
+                      </div>
+                      <div className="w-24 text-right font-semibold">
+                        {formatCurrency(item.total)}
+                      </div>
                       <Button
                         variant="ghost"
                         size="icon"
