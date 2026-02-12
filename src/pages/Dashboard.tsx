@@ -20,6 +20,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Link } from "react-router-dom";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from "recharts";
 import { Badge } from "@/components/ui/badge";
+import UpcomingRenewals from "@/components/dashboard/UpcomingRenewals";
 
 // Summary Cards with Gradients
 function GradientStatCard({ 
@@ -466,6 +467,9 @@ export default function Dashboard() {
         </div>
       </div>
       
+      {/* Upcoming Renewals */}
+      <UpcomingRenewals />
+
       {/* Recent Activity */}
       <RecentActivityCard />
     </div>
